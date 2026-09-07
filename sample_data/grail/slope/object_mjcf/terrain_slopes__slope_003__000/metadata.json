@@ -1,0 +1,22 @@
+{
+  "asset_version": 3,
+  "coacd_args": {
+    "max_convex_hull": 32,
+    "mcts_iterations": 200,
+    "mcts_max_depth": 3,
+    "mcts_nodes": 20,
+    "pca": false,
+    "preprocess_resolution": 50,
+    "resolution": 2000,
+    "seed": 0,
+    "threshold": 0.03
+  },
+  "collision_parts": 5,
+  "decomposition_method": "obj2mjcf_coacd",
+  "frames": 241,
+  "geometry_digest": "0e2580b5f3b70ac97c10",
+  "sequence_key": "terrain_slopes__slope_003__000",
+  "source_usd": "sample_data/grail/slope/object_usd/terrain_slopes__slope_003__000.usd",
+  "status": "converted",
+  "texture": "texture.jpg"
+}

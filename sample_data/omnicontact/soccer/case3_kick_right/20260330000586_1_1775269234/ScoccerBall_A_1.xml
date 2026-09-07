@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="scoccerball_a_1">
+  <compiler angle="radian" autolimits="true" />
+  <option timestep="0.002" gravity="0 0 -9.81" />
+  <asset>
+    <material name="obj_visual" rgba="0.75 0.72 0.66 1" />
+    <mesh name="scoccerball_a_1_mesh" file="ScoccerBall_A_1.obj" scale="0.01 0.01 0.01" />
+  </asset>
+  <worldbody>
+    <body name="scoccerball_a_1" pos="0 0 0">
+      <inertial pos="-0.016867845 0.00577267 -0.02698281" mass="0.45" diaginertia="0.00349920097 0.00349920049 0.00349920146" />
+      <geom name="scoccerball_a_1_geom" type="mesh" mesh="scoccerball_a_1_mesh" material="obj_visual" friction="1 0.005 0.0001" contype="1" conaffinity="1" quat="0.707106781 0.707106781 0 0" />
+    </body>
+  </worldbody>
+</mujoco>

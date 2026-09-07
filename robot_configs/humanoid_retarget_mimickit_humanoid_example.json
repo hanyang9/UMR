@@ -1,0 +1,13 @@
+{
+  "robot": {
+    "name": "mimickit_humanoid",
+    "xml": "../assets/mimickit/humanoid.xml",
+    "point_cloud_center": "geom:pelvis"
+  },
+  "correspondence": {
+    "dataset": {
+      "smpl_center": "bbox_ratio",
+      "bbox_center_ratio": 0.5904058495010331
+    }
+  }
+}

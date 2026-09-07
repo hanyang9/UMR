@@ -1,0 +1,94 @@
+{
+  "free_joint_indices": [
+    3,
+    6,
+    9,
+    13,
+    14,
+    16,
+    17
+  ],
+  "targets": [
+    {
+      "smpl": "neck",
+      "smpl_idx": 12,
+      "bvh_idx": 6,
+      "residual_before_m": 0.0642455443739891,
+      "residual_after_m": 0.057133886963129044,
+      "residual_after_max_m": 0.07865307480096817,
+      "residual_after_max_frame": 2717
+    },
+    {
+      "smpl": "head",
+      "smpl_idx": 15,
+      "bvh_idx": 8,
+      "residual_before_m": 0.07831938564777374,
+      "residual_after_m": 0.06397859007120132,
+      "residual_after_max_m": 0.08256020396947861,
+      "residual_after_max_frame": 5571
+    },
+    {
+      "smpl": "left_elbow",
+      "smpl_idx": 18,
+      "bvh_idx": 11,
+      "residual_before_m": 0.06519687175750732,
+      "residual_after_m": 0.04468001797795296,
+      "residual_after_max_m": 0.10109691321849823,
+      "residual_after_max_frame": 5762
+    },
+    {
+      "smpl": "right_elbow",
+      "smpl_idx": 19,
+      "bvh_idx": 30,
+      "residual_before_m": 0.03476141020655632,
+      "residual_after_m": 0.02567935734987259,
+      "residual_after_max_m": 0.06281732767820358,
+      "residual_after_max_frame": 5763
+    },
+    {
+      "smpl": "left_wrist",
+      "smpl_idx": 20,
+      "bvh_idx": 12,
+      "residual_before_m": 0.06537841260433197,
+      "residual_after_m": 0.026465175673365593,
+      "residual_after_max_m": 0.07094571739435196,
+      "residual_after_max_frame": 5763
+    },
+    {
+      "smpl": "right_wrist",
+      "smpl_idx": 21,
+      "bvh_idx": 31,
+      "residual_before_m": 0.061291199177503586,
+      "residual_after_m": 0.030288102105259895,
+      "residual_after_max_m": 0.04165982827544212,
+      "residual_after_max_frame": 4208
+    }
+  ],
+  "mean_residual_before_m": 0.06153213605284691,
+  "mean_residual_after_m": 0.041370853781700134,
+  "max_residual_after_m": 0.10109691321849823,
+  "max_residual_after_frame": 5762,
+  "final_loss": 0.005169905722141266,
+  "post_smoothing": {
+    "cutoff_hz": 6.0,
+    "order": 4
+  },
+  "orientation_targets": [
+    {
+      "smpl": "left_wrist",
+      "residual_before_deg": 4.978379249572754,
+      "residual_after_deg": 1.148389220237732,
+      "residual_after_max_deg": 3.914466381072998,
+      "residual_after_max_frame": 5724
+    },
+    {
+      "smpl": "right_wrist",
+      "residual_before_deg": 4.978368759155273,
+      "residual_after_deg": 0.8571287989616394,
+      "residual_after_max_deg": 2.811324119567871,
+      "residual_after_max_frame": 5762
+    }
+  ],
+  "mean_orient_after_deg": 1.0027589797973633,
+  "max_orient_after_deg": 3.914466381072998
+}

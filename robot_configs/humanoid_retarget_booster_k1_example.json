@@ -1,0 +1,49 @@
+{
+  "robot": {
+    "name": "booster_k1",
+    "xml": "../assets/booster_k1/K1_serial_tpose_mjcf.xml",
+    "point_cloud_center": "body:Trunk",
+    "xml_policy": {
+      "floating_root_body": "k1_float_root",
+      "floating_freejoint": "k1_root_freejoint"
+    },
+    "tpose_qpos": {
+      "AAHead_yaw": 0.0,
+      "Head_pitch": 0.0,
+      "ALeft_Shoulder_Pitch": 0.0,
+      "Left_Shoulder_Roll": 0.0,
+      "Left_Elbow_Pitch": 0.0,
+      "Left_Elbow_Yaw": 0.0,
+      "ARight_Shoulder_Pitch": 0.0,
+      "Right_Shoulder_Roll": 0.0,
+      "Right_Elbow_Pitch": 0.0,
+      "Right_Elbow_Yaw": 0.0,
+      "Left_Hip_Pitch": 0.0,
+      "Left_Hip_Roll": 0.0,
+      "Left_Hip_Yaw": 0.0,
+      "Left_Knee_Pitch": 0.0,
+      "Left_Ankle_Pitch": 0.0,
+      "Left_Ankle_Roll": 0.0,
+      "Right_Hip_Pitch": 0.0,
+      "Right_Hip_Roll": 0.0,
+      "Right_Hip_Yaw": 0.0,
+      "Right_Knee_Pitch": 0.0,
+      "Right_Ankle_Pitch": 0.0,
+      "Right_Ankle_Roll": 0.0
+    },
+    "joint_limits": {
+      "Right_Elbow_Yaw": [0.05, 2.4],
+      "Left_Elbow_Yaw": [-2.4, -0.05],
+      "Left_Elbow_Pitch": [-1.5707963267948966, 1.5707963267948966],
+      "Right_Elbow_Pitch": [-1.5707963267948966, 1.5707963267948966],
+      "Right_Shoulder_Roll": [-1.57, 1.5],
+      "Left_Shoulder_Roll": [-1.5, 1.57]
+    }
+  },
+  "correspondence": {
+    "dataset": {
+      "smpl_center": "bbox_ratio",
+      "bbox_center_ratio": 0.5662274843208708
+    }
+  }
+}

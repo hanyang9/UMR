@@ -1,0 +1,64 @@
+{
+  "robot": {
+    "name": "engineai_t800",
+    "xml": "../assets/t800/xml/serial_t800_tpose_mjcf.xml",
+    "point_cloud_center": "body:LINK_WAIST_YAW",
+    "xml_policy": {
+      "floating_root_body": "t800_float_root",
+      "floating_freejoint": "t800_root_freejoint"
+    },
+    "tpose_qpos": {
+      "J00_HIP_PITCH_L": 0.0,
+      "J01_HIP_ROLL_L": 0.0,
+      "J02_HIP_YAW_L": 0.0,
+      "J03_KNEE_PITCH_L": 0.0,
+      "J04_ANKLE_PITCH_L": 0.0,
+      "J05_ANKLE_ROLL_L": 0.0,
+      "J06_HIP_PITCH_R": 0.0,
+      "J07_HIP_ROLL_R": 0.0,
+      "J08_HIP_YAW_R": 0.0,
+      "J09_KNEE_PITCH_R": 0.0,
+      "J10_ANKLE_PITCH_R": 0.0,
+      "J11_ANKLE_ROLL_R": 0.0,
+      "J12_TORSO_YAW": 0.0,
+      "J13_SHOULDER_PITCH_L": 0.0,
+      "J14_SHOULDER_ROLL_L": 1.5707963267948966,
+      "J15_SHOULDER_YAW_L": 0.0,
+      "J16_ELBOW_PITCH_L": 0.0,
+      "J17_ELBOW_YAW_L": 0.0,
+      "J18_SHOULDER_PITCH_R": 0.0,
+      "J19_SHOULDER_ROLL_R": -1.5707963267948966,
+      "J20_SHOULDER_YAW_R": 0.0,
+      "J21_ELBOW_PITCH_R": 0.0,
+      "J22_ELBOW_YAW_R": 0.0,
+      "J23_HEAD_PITCH": 0.0,
+      "J24_HEAD_YAW": 0.0
+    },
+    "joint_limits": {
+      "J18_SHOULDER_PITCH_R": [-2.80, 1.00],
+      "J13_SHOULDER_PITCH_L": [-2.80, 1.00],
+      "J19_SHOULDER_ROLL_R": [-2.44, 0.38],
+      "J14_SHOULDER_ROLL_L": [-0.38, 2.44],
+      "J15_SHOULDER_YAW_L": [-1.5, 1.50],
+      "J20_SHOULDER_YAW_R": [-1.5, 1.50],
+      "J21_ELBOW_PITCH_R": [-2.29, 0.00],
+      "J16_ELBOW_PITCH_L": [-2.29, 0.00],
+      "J22_ELBOW_YAW_R": [-1.5, 1.5],
+      "J17_ELBOW_YAW_L": [-1.5, 1.5],
+      "J06_HIP_PITCH_R": [-2.0, 0.5],
+      "J00_HIP_PITCH_L": [-2.0, 0.5],
+      "J01_HIP_ROLL_L": [-0.5, 1.0],
+      "J02_HIP_YAW_L": [-0.5, 1.5],
+      "J07_HIP_ROLL_R": [-1.0, 0.5],
+      "J08_HIP_YAW_R": [-1.5, 0.5],
+      "J03_KNEE_PITCH_L": [0.05, 2.35],
+      "J09_KNEE_PITCH_R": [0.05, 2.35]
+    }
+  },
+  "correspondence": {
+    "dataset": {
+      "smpl_center": "bbox_ratio",
+      "bbox_center_ratio": 0.6465155221226483
+    }
+  }
+}

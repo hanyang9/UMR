@@ -1,0 +1,58 @@
+{
+  "soma_usd_path": "sample_data/bones-seed/shapes/soma_base_rig/soma_base_skel_minimal.usd",
+  "smpl_template": {
+    "source": "motion",
+    "type": "soma",
+    "use_betas": true,
+    "use_gender": false,
+    "name": "auto",
+    "betas": null,
+    "soma_usd_path": "sample_data/bones-seed/shapes/soma_base_rig/soma_base_skel_minimal.usd"
+  },
+  "correspondence": {
+    "smpl_name": "auto",
+    "dataset": {
+      "smpl_center": "spine1",
+      "smpl_models": []
+    },
+    "train": {
+      "template_name": "auto"
+    }
+  },
+  "batch": {
+    "motion_folder": "sample_data/bones-seed/motions_uniform/bvh",
+    "patterns": [
+      "*.bvh"
+    ],
+    "recursive": true,
+    "boneseed_preload_templates": true,
+    "workers": 20,
+    "correspondence_workers": 8,
+    "correspondence_devices": "auto",
+    "correspondence_build_device": "cpu",
+    "retarget_gpus": "none",
+    "retarget_cpu_threads": 1,
+    "output_root": "output/batch_retarget",
+    "temp_config_root": null,
+    "keep_temp_configs": false,
+    "skip_existing": true,
+    "compact_log": true,
+    "progress_bars": true,
+    "tail_lines_on_error": 80
+  },
+  "motion": {
+    "start": 0,
+    "end": -1,
+    "stride": 1,
+    "max_frames": 0
+  },
+  "solver": {
+    "trajectory_warm_start_mode": "bidirectional",
+    "trajectory_warm_start_bidirectional_continuity_cost": 0.1,
+    "trajectory_warm_start_bidirectional_switch_cost": 0.01
+  },
+  "retarget": {
+    "stream_chunk_frames": 300,
+    "save_source_debug": false
+  }
+}

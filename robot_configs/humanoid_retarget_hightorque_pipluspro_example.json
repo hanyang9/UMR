@@ -1,0 +1,60 @@
+{
+  "robot": {
+    "name": "pipluspro",
+    "xml": "../assets/PiPlusPro/xml/PiPlusPro_S_12L10A2G2H1W_ZedMini.xml",
+    "point_cloud_center": "body:waist_yaw_link",
+    "tpose_qpos": {
+      "r_hip_pitch_joint": 0.0,
+      "r_hip_roll_joint": 0.0,
+      "r_thigh_joint": 0.0,
+      "r_calf_joint": 0.0,
+      "r_ankle_pitch_joint": 0.0,
+      "r_ankle_roll_joint": 0.0,
+      "l_hip_pitch_joint": 0.0,
+      "l_hip_roll_joint": 0.0,
+      "l_thigh_joint": 0.0,
+      "l_calf_joint": 0.0,
+      "l_ankle_pitch_joint": 0.0,
+      "l_ankle_roll_joint": 0.0,
+      "r_shoulder_pitch_joint": 0.0,
+      "r_shoulder_roll_joint": -1.5707963267948966,
+      "r_upper_arm_joint": 0.0,
+      "r_elbow_joint": 0.0,
+      "r_wrist_joint": 0.0,
+      "l_shoulder_pitch_joint": 0.0,
+      "l_shoulder_roll_joint": 1.5707963267948966,
+      "l_upper_arm_joint": 0.0,
+      "l_elbow_joint": 0.0,
+      "l_wrist_joint": 0.0
+    },
+    "joint_limits": {
+      "l_hip_pitch_joint": [-1.5, 0.2],
+      "l_hip_roll_joint": [-0.38, 1.2],
+      "l_thigh_joint": [-1.2, 1.2],
+      "l_calf_joint": [0.2, 2.2],
+      "l_ankle_pitch_joint": [-1.0, 0.8],
+      "l_ankle_roll_joint": [-0.6, 0.6],
+      "r_hip_pitch_joint": [-1.5, 0.2],
+      "r_hip_roll_joint": [-1.2, 0.38],
+      "r_thigh_joint": [-1.2, 1.2],
+      "r_calf_joint": [0.2, 2.2],
+      "r_ankle_pitch_joint": [-1.0, 0.8],
+      "r_ankle_roll_joint": [-0.6, 0.6],
+      "l_upper_arm_joint": [-2.1, 2.1],
+      "r_upper_arm_joint": [-2.1, 2.1],
+      "l_elbow_joint": [-1.8, -0.05],
+      "r_elbow_joint": [-1.8, -0.05],
+      "l_wrist_joint": [-1.5, 1.5],
+      "r_wrist_joint": [-1.5, 1.5],
+      "l_should_roll_joint": [0.1, 3.0],
+      "r_should_roll_joint": [-3.0, -0.1],
+      "head_pitch_joint": [-0.35, 0.85]
+    }
+  },
+  "correspondence": {
+    "dataset": {
+      "smpl_center": "bbox_ratio",
+      "bbox_center_ratio": 0.5340569989535866
+    }
+  }
+}

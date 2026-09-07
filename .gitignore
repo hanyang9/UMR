@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Generated UMR artifacts
+output/
+visualizations/
+deploy/
+*.floating_mjcf.xml
+*.log
+MUJOCO_LOG.TXT
+
+# Local/editor artifacts
+.DS_Store
+.idea/
+.vscode/
+*.orig
+*.swp
+node_modules/
+
+# License-gated body models
+smpl/*.pkl
+smpl/*.npz
+smpl/*.zip
+
+# User-downloaded or locally converted third-party datasets/assets
+sample_data/bones-seed/motions_uniform/
+sample_data/bones-seed/motions_proportional/
+sample_data/bones-seed/shapes/
+sample_data/bones-seed/soma_assets/
+sample_data/omomo/train_and_test/
+sample_data/omomo/train/
+sample_data/omomo/test/
+sample_data/omomo/object_mjcf/

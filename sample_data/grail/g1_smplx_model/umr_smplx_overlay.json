@@ -1,0 +1,9 @@
+{
+  "format": "umr_smplx_overlay_v1",
+  "variant": "grail_g1_smplx_v1",
+  "base_model_dir": "../../../smpl",
+  "gender": "neutral",
+  "template_obj": "g1_smplx_tpose.obj",
+  "parameters_npz": "g1_smplx_param.npz",
+  "pose_scale_key": "scale"
+}

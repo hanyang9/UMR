@@ -1,0 +1,27 @@
+# Unified Motion Retargeting runtime/training dependencies.
+#
+# Install inside Python 3.12.
+# Robot first_hit surface sampling uses trimesh's Embree backend via embreex.
+# Install the PyTorch build shown in README.md before this file because its
+# wheels are platform-specific.
+
+clarabel>=0.9
+cholespy>=2.1
+coacd==1.0.5
+glfw>=2.8
+huggingface_hub>=0.25
+imageio>=2.34
+imageio-ffmpeg>=0.5
+joblib>=1.4
+mujoco>=3.2,<3.4
+numpy>=1.24,<2.0
+obj2mjcf==0.0.25
+PyYAML>=6.0
+rtree>=1.2
+scipy>=1.10
+smplx @ git+https://github.com/ZhengyiLuo/smplx.git
+py-soma-x
+tqdm>=4.66
+embreex>=0.1.6
+trimesh>=4.0
+warp-lang>=1.6

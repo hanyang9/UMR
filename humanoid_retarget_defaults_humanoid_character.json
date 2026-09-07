@@ -1,0 +1,146 @@
+{
+  "smpl_template": {
+    "source": "manual",
+    "type": "character",
+    "use_betas": false,
+    "use_gender": false,
+    "name": "mimickit_humanoid_character"
+  },
+  "source_character": {
+    "name": "mimickit_humanoid_character",
+    "xml": "assets/mimickit/humanoid.xml",
+    "point_cloud_center": "body:pelvis",
+    "visual_geom_policy": "auto",
+    "to_smpl_frame": false,
+    "sample_pose": "tpose",
+    "height": 0.0
+  },
+  "robot": {
+    "visual_geom_policy": "auto",
+    "to_smpl_frame": false,
+    "sample_pose": "tpose",
+    "frame_transform": {
+      "smpl_to_robot_root_matrix": [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0]
+      ]
+    }
+  },
+  "correspondence": {
+    "frame_name": "mujoco",
+    "slots_field": "reconstructed_slots",
+    "source_name": "mimickit_humanoid_character",
+    "dataset": {
+      "num_points": 4096,
+      "seed": 0,
+      "surface_oversample_ratio": 8,
+      "surface_curvature_weight": 0.0,
+      "surface_curvature_power": 1.0,
+      "exterior_surface": true,
+      "exterior_method": "first_hit",
+      "exterior_occlusion_distance": 0.12,
+      "exterior_ray_distance": 0.0
+    },
+    "train": {
+      "template_name": "mimickit_humanoid_character",
+      "template_sort": "z_y_x",
+      "normalize": "per_sample_height",
+      "epochs": 500,
+      "batch_size": 2,
+      "device": "auto",
+      "lr": 0.001,
+      "lr_scheduler": "cosine",
+      "min_lr": 0.00001,
+      "chamfer_weight": 1.0,
+      "repulsion_weight": 0.002,
+      "repulsion_k": 8,
+      "repulsion_radius": 0.035,
+      "residual_weight": 0.0,
+      "edge_weight": 0.4,
+      "edge_graph": "geodesic",
+      "edge_k": 32,
+      "log_every": 100,
+      "save_every": 1000
+    }
+  },
+  "motion": {
+    "data": "sample_data/humanoid_character/humanoid_spinkick.pkl",
+    "seq_key": "humanoid_spinkick",
+    "seq_index": 0,
+    "start": 0,
+    "end": -1,
+    "stride": 1,
+    "max_frames": 0
+  },
+  "solver": {
+    "character_body_segment": {
+      "schema": "mimickit_humanoid_body_v1",
+      "cost_config": {
+        "pelvis": {"sample_slots": 24, "point_cost": 10.0, "normal_cost": 0.0},
+        "torso": {"sample_slots": 42, "point_cost": 10.0, "normal_cost": 5.0},
+        "head": {"sample_slots": 16, "point_cost": 10.0, "normal_cost": 1.0},
+        "left_upper_arm": {"sample_slots": 12, "point_cost": 10.0, "normal_cost": 5.0},
+        "left_lower_arm": {"sample_slots": 12, "point_cost": 10.0, "normal_cost": 5.0},
+        "left_hand": {"sample_slots": 8, "point_cost": 10.0, "normal_cost": 1.0},
+        "right_upper_arm": {"sample_slots": 12, "point_cost": 10.0, "normal_cost": 5.0},
+        "right_lower_arm": {"sample_slots": 12, "point_cost": 10.0, "normal_cost": 5.0},
+        "right_hand": {"sample_slots": 8, "point_cost": 10.0, "normal_cost": 1.0},
+        "left_thigh": {"sample_slots": 20, "point_cost": 1.0, "normal_cost": 5.0},
+        "left_shin": {"sample_slots": 15, "point_cost": 1.0, "normal_cost": 5.0},
+        "left_foot": {"sample_slots": 20, "point_cost": 50.0, "normal_cost": 0.0},
+        "right_thigh": {"sample_slots": 20, "point_cost": 1.0, "normal_cost": 5.0},
+        "right_shin": {"sample_slots": 15, "point_cost": 1.0, "normal_cost": 5.0},
+        "right_foot": {"sample_slots": 20, "point_cost": 50.0, "normal_cost": 0.0}
+      }
+    },
+    "uniform_surface_sample": {
+      "enabled": false,
+      "num_slots": 256,
+      "point_cost": 10.0,
+      "normal_cost": 0.0,
+      "disable_self_contact": true
+    },
+    "ground_contact_map_cost": 50.0,
+    "ground_contact_anchor_cost": 0.0,
+    "ground_contact_map_threshold": 0.1,
+    "ground_contact_map_snap_threshold": 0.0,
+    "ground_contact_map_max_points": 128,
+    "self_contact_map_cost": 0.0,
+    "self_contact_map_threshold": 0.10,
+    "self_contact_map_max_pairs": 256,
+    "surface_normal_cost_mode": "tpose_offset",
+    "smooth_cost": 1.0,
+    "temporal_smooth_cost": 0.5,
+    "damping": 0.0001,
+    "collision_threshold": 0.1,
+    "robot_self_penetration_cost": 0.0,
+    "iters": 8,
+    "pose_init_iters": 10,
+    "max_dq": 0.15,
+    "seed": 0,
+    "batch_size": 32,
+    "bind_nearest_vertex_k": 24,
+    "project_robot_slots": true
+  },
+  "retarget": {
+    "mat_height": 0.0,
+    "source_ground_align": "ground_min",
+    "source_height_axis": "z",
+    "robot_height_axis": "z"
+  },
+  "view": {
+    "enabled": true,
+    "play": true,
+    "rate_limit": true,
+    "extra_args": {
+      "viewer_backend": "glfw-ui",
+      "show_left_ui": false,
+      "show_right_ui": false,
+      "show_source_slots": false,
+      "source_slot_offset": [-2.0, 0.0, 0.0],
+      "show_robot_slots": false,
+      "show_ground_contact_map": false
+    }
+  }
+}

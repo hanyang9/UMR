@@ -1,0 +1,47 @@
+{
+  "robot": {
+    "name": "unitree_h2",
+    "xml": "../assets/h2_description/H2_stl_mjcf.xml",
+    "point_cloud_center": "body:waist_yaw_link",
+    "xml_policy": {
+      "floating_root_body": "h2_float_root",
+      "floating_freejoint": "h2_root_freejoint"
+    },
+    "tpose_qpos": {
+      "left_shoulder_pitch_joint": 0.0,
+      "left_shoulder_roll_joint": 1.5707963267948966,
+      "left_shoulder_yaw_joint": 0.0,
+      "left_elbow_joint": 1.5707963267948966,
+      "left_wrist_roll_joint": 0.0,
+      "left_wrist_pitch_joint": 0.0,
+      "left_wrist_yaw_joint": 0.0,
+      "right_shoulder_pitch_joint": 0.0,
+      "right_shoulder_roll_joint": -1.5707963267948966,
+      "right_shoulder_yaw_joint": 0.0,
+      "right_elbow_joint": 1.5707963267948966,
+      "right_wrist_roll_joint": 0.0,
+      "right_wrist_pitch_joint": 0.0,
+      "right_wrist_yaw_joint": 0.0
+    },
+    "joint_limits": {
+      "left_knee_joint": [0.1, "inf"],
+      "right_knee_joint": [0.1, "inf"],
+      "waist_roll_joint": [-0.3, 0.3],
+      "waist_pitch_joint": [-0.1, "inf"],
+      "left_elbow_joint": ["-inf", 1.4],
+      "left_wrist_roll_joint": [-0.1, 0.2],
+      "left_wrist_pitch_joint": [-0.1, 0.3],
+      "left_wrist_yaw_joint": [-0.1, 0.1],
+      "right_elbow_joint": ["-inf", 1.4],
+      "right_wrist_roll_joint": [-0.1, 0.2],
+      "right_wrist_pitch_joint": [-0.1, 0.3],
+      "right_wrist_yaw_joint": [-0.1, 0.1]
+    }
+  },
+  "correspondence": {
+    "dataset": {
+      "smpl_center": "bbox_ratio",
+      "bbox_center_ratio": 0.6156926988023894
+    }
+  }
+}

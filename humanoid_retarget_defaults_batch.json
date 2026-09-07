@@ -1,0 +1,30 @@
+{
+  "batch": {
+    "motion_folder": "sample_data/lafan1_smplx",
+    "patterns": ["*.bvh", "*.npz"],
+    "recursive": false,
+    "workers": 20,
+    "correspondence_workers": 1,
+    "output_root": "output/batch_retarget",
+    "temp_config_root": null,
+    "keep_temp_configs": false,
+    "skip_existing": true,
+    "compact_log": true,
+    "progress_bars": true,
+    "tail_lines_on_error": 80
+  },
+  "motion": {
+    "start": 0,
+    "end": -1,
+    "stride": 1,
+    "max_frames": 0
+  },
+  "solver": {
+    "trajectory_warm_start_mode": "bidirectional",
+    "trajectory_warm_start_bidirectional_continuity_cost": 0.1,
+    "trajectory_warm_start_bidirectional_switch_cost": 0.01
+  },
+  "retarget": {
+    "stream_chunk_frames": 300
+  }
+}
