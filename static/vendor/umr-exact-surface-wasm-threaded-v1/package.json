@@ -1,0 +1,15 @@
+{
+  "name": "umr-exact-surface-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "umr_exact_surface_wasm_bg.wasm",
+    "umr_exact_surface_wasm.js",
+    "umr_exact_surface_wasm.d.ts"
+  ],
+  "main": "umr_exact_surface_wasm.js",
+  "types": "umr_exact_surface_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
