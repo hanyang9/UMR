@@ -4,7 +4,7 @@
 
 import initClarabel, {
   solve_qp_csc as solveQpCsc
-} from "../vendor/umr-clarabel-wasm-v1/umr_clarabel_wasm.js";
+} from "../vendor/umr-clarabel-wasm-v1/umr_clarabel_wasm.js?v=20260908-pages-wasm-deps-v1";
 
 let clarabelReady = null;
 
