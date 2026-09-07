@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Interactive UMR motion retargeting Studio">
+  <meta name="keywords" content="humanoid motion retargeting, MuJoCo, UMR">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UMR Motion Retargeting Studio</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/index.css?v=20260906-g1-drag-demo-v1">
+  <script src="./coi-serviceworker.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+</head>
+<body class="umr-standalone-studio-page">
+  <header class="umr-standalone-studio-header">
+    <a class="umr-studio-back-link" href="./umr_project.html">
+      <span aria-hidden="true">←</span>
+      <span>Back to the UMR project page</span>
+    </a>
+    <div>
+      <span class="mj-eyebrow">Interactive browser application</span>
+      <h1>UMR Motion Retargeting Studio</h1>
+      <p>
+        Upload an MJCF robot, edit its T-pose, select a reference motion, and
+        run sampling, correspondence training, mesh binding, and retargeting
+        locally in this browser.
+      </p>
+    </div>
+  </header>
+
+  <aside class="umr-studio-important-notice" aria-labelledby="umr-studio-important-title">
+    <div class="umr-studio-important-mark" aria-hidden="true">!</div>
+    <div>
+      <h2 id="umr-studio-important-title">Important usage note</h2>
+      <p>
+        This Studio is an interactive visualization experience. Due to data license,
+        retargeted results <strong>are not available for download.</strong>
+        It runs a <strong>complete UMR pipeline adapted specifically for the browser</strong>—from
+        surface sampling and correspondence training through mesh binding and
+        retargeting. To maximize accessibility across devices, training runs on the
+        CPU. <strong>Online Studio performance is not representative of native UMR performance.</strong>
+      </p>
+      <p class="umr-studio-memory-note">
+        <strong>Memory requirement:</strong> keep at least <strong>3 GiB</strong> of memory available
+        before running a task.
+      </p>
+    </div>
+  </aside>
+
+  <section class="content umr-standalone-studio-tutorials" aria-labelledby="umr-studio-tutorials-title">
+    <h2 id="umr-studio-tutorials-title">UMR Tutorial Video</h2>
+    <div class="mj-tutorial-grid" data-tutorial-switcher aria-label="UMR Robot Retargeting Studio tutorials">
+      <figure class="mj-tutorial-card is-active" data-tutorial-step="1" tabindex="0" aria-current="step">
+        <div class="mj-tutorial-media">
+          <video data-lazy-src="./tutorial_step1_load_5s-19s_30fps.mp4?v=20260906-combined-tutorial-v1" poster="./tutorial_step1_load_5s-19s_poster.jpg?v=20260906-combined-tutorial-v1" aria-label="Tutorial for dragging and loading robot assets into the Studio" width="1280" height="720" controls muted playsinline preload="metadata"></video>
+        </div>
+        <figcaption class="umr-video-caption"><span class="mj-tutorial-step-icon" aria-hidden="true">1</span><span>Drag and Load Robot Assets</span></figcaption>
+      </figure>
+      <span class="mj-tutorial-arrow" aria-hidden="true">→</span>
+      <figure class="mj-tutorial-card" data-tutorial-step="2" tabindex="0">
+        <div class="mj-tutorial-media">
+          <video data-lazy-src="./tutorial_step2_tpose_21s-45s_30fps.mp4?v=20260906-combined-tutorial-v1" poster="./tutorial_step2_tpose_21s-45s_poster.jpg?v=20260906-combined-tutorial-v1" aria-label="Tutorial for editing the robot T-pose in the Studio" width="1280" height="720" controls muted playsinline preload="metadata"></video>
+        </div>
+        <figcaption class="umr-video-caption"><span class="mj-tutorial-step-icon" aria-hidden="true">2</span><span>Edit the Robot T-Pose</span></figcaption>
+      </figure>
+      <span class="mj-tutorial-arrow" aria-hidden="true">→</span>
+      <figure class="mj-tutorial-card" data-tutorial-step="3" tabindex="0">
+        <div class="mj-tutorial-media">
+          <video data-lazy-src="./tutorial_step3_retarget_47s-101s_30fps.mp4?v=20260906-combined-tutorial-v1" poster="./tutorial_step3_retarget_47s-101s_poster.jpg?v=20260906-combined-tutorial-v1" aria-label="Tutorial for running motion retargeting in the Studio" width="1280" height="720" controls muted playsinline preload="metadata"></video>
+        </div>
+        <figcaption class="umr-video-caption"><span class="mj-tutorial-step-icon" aria-hidden="true">3</span><span>Retarget the Motion</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <main id="umr-standalone-studio" class="content" aria-live="polite">
+    <div class="umr-standalone-studio-loading">
+      <span class="mj-spinner" aria-hidden="true"></span>
+      <strong>Loading the standalone Studio…</strong>
+    </div>
+  </main>
+
+  <section class="umr-studio-robot-presets" aria-labelledby="umr-studio-robot-presets-title">
+    <div class="umr-studio-robot-presets-heading">
+      <span class="mj-eyebrow">Ready-to-drag examples</span>
+      <h2 id="umr-studio-robot-presets-title">Robot T-pose library</h2>
+      <p>Drag a preview into the Studio scene to load the complete robot asset and its configured UMR T-pose.</p>
+    </div>
+    <div class="umr-studio-robot-preset-grid">
+      <button class="umr-studio-robot-preset" type="button" draggable="true" data-umr-robot-preset="piplus" aria-pressed="false" aria-label="Drag PiPlus into the Studio scene in its configured T-pose">
+        <span class="umr-studio-robot-preset-media">
+          <img src="./static/image/studio_robot_presets/piplus_tpose.png?v=20260905-studio-robot-presets-v1" alt="PiPlus in its configured UMR T-pose" width="960" height="760" loading="lazy" decoding="async" draggable="false">
+          <span class="umr-studio-robot-drag-label">Drag to Studio</span>
+        </span>
+        <strong>PiPlus</strong>
+      </button>
+      <button class="umr-studio-robot-preset" type="button" draggable="true" data-umr-robot-preset="booster_k1" aria-pressed="false" aria-label="Drag Booster K1 into the Studio scene in its configured T-pose">
+        <span class="umr-studio-robot-preset-media">
+          <img src="./static/image/studio_robot_presets/booster_k1_tpose.png?v=20260905-studio-robot-presets-v1" alt="Booster K1 in its configured UMR T-pose" width="960" height="760" loading="lazy" decoding="async" draggable="false">
+          <span class="umr-studio-robot-drag-label">Drag to Studio</span>
+        </span>
+        <strong>Booster K1</strong>
+      </button>
+      <button class="umr-studio-robot-preset" type="button" draggable="true" data-umr-robot-preset="g1" aria-pressed="false" aria-label="Drag Unitree G1 into the Studio scene in its configured T-pose">
+        <span class="umr-studio-robot-preset-media">
+          <img src="./static/image/studio_robot_presets/g1_tpose.png?v=20260905-studio-robot-presets-v1" alt="Unitree G1 in its configured UMR T-pose" width="960" height="760" loading="lazy" decoding="async" draggable="false">
+          <span class="umr-studio-robot-drag-label">Drag to Studio</span>
+        </span>
+        <strong>Unitree G1</strong>
+      </button>
+      <button class="umr-studio-robot-preset" type="button" draggable="true" data-umr-robot-preset="t800" aria-pressed="false" aria-label="Drag EngineAI T800 into the Studio scene in its configured T-pose">
+        <span class="umr-studio-robot-preset-media">
+          <img src="./static/image/studio_robot_presets/t800_tpose.png?v=20260905-studio-robot-presets-v1" alt="EngineAI T800 in its configured UMR T-pose" width="960" height="760" loading="lazy" decoding="async" draggable="false">
+          <span class="umr-studio-robot-drag-label">Drag to Studio</span>
+        </span>
+        <strong>EngineAI T800</strong>
+      </button>
+      <article class="umr-studio-robot-preset umr-studio-custom-robot-card" aria-label="Try your own robot asset in the Studio">
+        <span class="umr-studio-robot-preset-media">
+          <img src="./static/image/studio_robot_presets/custom_robot_empty_scene.png?v=20260905-studio-custom-robot-v1" alt="Empty UMR Studio scene for a custom robot" width="960" height="760" loading="lazy" decoding="async" draggable="false">
+          <span class="umr-studio-custom-robot-shade" aria-hidden="true"></span>
+          <span class="umr-studio-custom-robot-question" aria-hidden="true">?</span>
+          <span class="umr-studio-custom-robot-message">Try dropping your own robot asset into the Studio!</span>
+        </span>
+        <strong>Your robot</strong>
+      </article>
+    </div>
+  </section>
+
+  <script type="module" src="./static/js/umr-studio-page.js?v=20260906-g1-drag-demo-v1"></script>
+</body>
+</html>

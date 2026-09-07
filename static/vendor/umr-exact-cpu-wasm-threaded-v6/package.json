@@ -1,0 +1,15 @@
+{
+  "name": "umr-exact-cpu-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "umr_exact_cpu_wasm_bg.wasm",
+    "umr_exact_cpu_wasm.js",
+    "umr_exact_cpu_wasm.d.ts"
+  ],
+  "main": "umr_exact_cpu_wasm.js",
+  "types": "umr_exact_cpu_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

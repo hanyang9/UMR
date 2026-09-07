@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Unified Motion Retargeting for Humanoids with Learned Point Cloud Correspondence">
+  <meta name="keywords" content="humanoid motion retargeting, point cloud correspondence, UMR">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UMR: Unified Motion Retargeting for Humanoids with Learned Point Cloud Correspondence</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/index.css?v=20260906-author-list-v2">
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">Unified Motion Retargeting for Humanoids with Learned Point Cloud Correspondence</h1>
+          <div class="publication-authors umr-publication-authors" aria-label="Authors and affiliations">
+            <div class="umr-publication-author-row">
+              <span class="author-block">Hanyang Cao<sup>1,2,*</sup></span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=zgo7pswAAAAJ&amp;hl=zh-CN" target="_blank" rel="noopener noreferrer">Yuetong Fang</a><sup>1,2,*</sup></span>
+              <span class="author-block"><a href="http://calab.hanyang.ac.kr/?node=Taesoo" target="_blank" rel="noopener noreferrer">Taesoo Kwon</a><sup>3,*</sup></span>
+              <span class="author-block"><a href="https://ingrid789.github.io/IngridYu/" target="_blank" rel="noopener noreferrer">Runyi Yu</a><sup>2,4</sup></span>
+              <span class="author-block"><a href="https://astrorix.github.io/" target="_blank" rel="noopener noreferrer">Ji Ma</a><sup>5</sup></span>
+              <span class="author-block"><a href="https://colin-jing.github.io/" target="_blank" rel="noopener noreferrer">Jing Tan</a><sup>1,2</sup></span>
+            </div>
+            <div class="umr-publication-author-row">
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=mj9KoYkAAAAJ&amp;hl=zh-CN" target="_blank" rel="noopener noreferrer">Yangchen Zhou</a><sup>1</sup></span>
+              <span class="author-block">Baoze Du<sup>2</sup></span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=CPakAgoAAAAJ&amp;hl=zh-CN" target="_blank" rel="noopener noreferrer">Yi Gu</a><sup>1</sup></span>
+              <span class="author-block"><a href="https://scholar.google.com/citations?user=nU0FaU8AAAAJ&amp;hl=zh-CN" target="_blank" rel="noopener noreferrer">Yukang Gao</a><sup>1,2</sup></span>
+              <span class="author-block">Ruoli Dai<sup>2</sup></span>
+              <span class="author-block"><a href="https://www.leihan.org/" target="_blank" rel="noopener noreferrer">Lei Han</a><sup>2,†</sup></span>
+              <span class="author-block"><a href="https://facultyprofiles.hkust-gz.edu.cn/faculty-personal-page?id=97" target="_blank" rel="noopener noreferrer">Renjing Xu</a><sup>1,†</sup></span>
+            </div>
+            <div class="umr-publication-affiliations">
+              <span><sup>1</sup>HKUST(GZ)</span>
+              <span><sup>2</sup>Noitom Robotics</span>
+              <span><sup>3</sup>Hanyang University</span>
+              <span><sup>4</sup>HKUST</span>
+              <span><sup>5</sup>HKU</span>
+            </div>
+            <div class="umr-publication-contributions">
+              <span><sup>*</sup>Equal contribution</span>
+              <span><sup>†</sup>Corresponding authors</span>
+            </div>
+          </div>
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2609.02134" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="./umr_studio.html" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-robot"></i></span>
+                  <span>UMR Studio</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://github.com/hanyang9/UMR" class="external-link button is-normal is-rounded is-dark" target="_blank" rel="noopener noreferrer">
+                  <span class="icon"><i class="fab fa-github"></i></span>
+                  <span>Code</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+<div class="container is-max-desktop">
+<div class="content">
+
+<div class="columns is-centered has-text-centered">
+  <div class="column is-four-fifths">
+    <h2>Abstract</h2>
+    <div class="content has-text-justified">
+      Humanoid learning increasingly relies on transforming vast and diverse human motion data into high-quality robot reference trajectories.
+      However, retargeting human motion to humanoid robots is challenging due to substantial differences in morphology, degrees of freedom, joint ranges, and kinematic constraints between humans and robots.
+      Existing retargeting methods typically address these differences by defining human-robot correspondence through hand-crafted sparse keypoints or body-part pairs. As a result, retargeting quality depends heavily on manual semantic design, limiting scalability across motion sources and robot morphologies and providing only sparse guidance for reproducing detailed poses and interactions.
+      In this paper, we present Unified Motion Retargeting (UMR), a framework that learns dense point cloud correspondence without requiring manually designed human-robot mappings. By treating exterior point clouds as a unified interface between human motion and humanoid robots, UMR decouples retargeting from source-specific skeletal semantics and robot-specific topology. The learned dense correspondence provides fine-grained geometric anchors for constrained point cloud matching optimization, enabling surface-level pose alignment and direct transfer of interaction contacts. Experiments demonstrate that UMR unifies retargeting across heterogeneous motion sources, robot embodiments, and downstream scenarios ranging from locomotion to interaction, while achieving higher motion fidelity and plausibility than state-of-the-art methods. UMR therefore provides a scalable foundation for transforming large-scale human motion references into robot-ready training data.
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h3 style="text-align: center;">Overview</h3>
+<blockquote style="text-align: justify; text-justify: inter-word;">
+  UMR learns ordered human–robot point cloud correspondence in canonical poses and binds paired points to the body meshes. It then solves constrained retargeting over these points, matching body pose while transferring point cloud contact maps from human motion to the robot.
+</blockquote>
+<div class="umr-overview-figure">
+  <img data-lazy-src="./static/image/umr/overview_2_2.svg" alt="UMR overview" width="16641" height="4041" loading="lazy" decoding="async" fetchpriority="low">
+</div>
+
+<h3 class="umr-section-heading" style="text-align: center;">Unified Retargeting Across Sources and Embodiments</h3>
+<blockquote style="text-align: justify; text-justify: inter-word;">
+  The same point cloud correspondence and correspondence-guided retargeting formulation supports heterogeneous motion representations and diverse robot morphologies without manually defined skeletal keypoints or human–robot body mappings.
+</blockquote>
+<div class="umr-graphics-acceleration-note" role="note">
+  <strong>Rendering note:</strong> Make sure graphics acceleration is enabled for
+  smooth scene playback. In Chrome, go to <code>chrome://settings/system</code>,
+  enable <em>Use graphics acceleration when available</em>, and relaunch Chrome.
+</div>
+<div class="umr-multi-robot-scene" data-umr-multi-robot-scene data-state="idle">
+  <canvas aria-label="Four motion sources retargeted to five humanoid robots, playing automatically"></canvas>
+  <div class="umr-scene-loading-overlay" role="status" aria-live="polite">
+    <span class="umr-scene-loading-spinner" aria-hidden="true"></span>
+    <div class="umr-scene-loading-copy">
+      <strong>Loading interactive scene</strong>
+      <small>Preparing motion sources and robot models&hellip;</small>
+    </div>
+    <div class="umr-scene-loading-error">
+      <strong>Scene could not be loaded</strong>
+      <small>Please refresh the page and try again.</small>
+    </div>
+    <span class="umr-scene-loading-track" aria-hidden="true"><i></i></span>
+  </div>
+</div>
+
+<h3 class="umr-section-heading" style="text-align: center;">UMR Robot Retargeting Studio</h3>
+<blockquote style="text-align: justify; text-justify: inter-word;">
+  Bring a new humanoid to motion with a simple <strong>drag-and-play</strong> workflow. Drop in its assets, shape the T-pose, choose a reference, and let UMR carry the motion across embodiments. Every result below was produced directly in the Studio through the same workflow, <strong>without robot-specific mappings or per-robot parameter tuning.</strong> Ready to try it? Launch the Studio to retarget your own robot!
+</blockquote>
+
+<div class="umr-studio-example-grid" role="group" aria-label="Robot examples produced in the UMR Motion Retargeting Studio">
+  <figure class="umr-studio-example-card">
+    <div class="umr-studio-example-media">
+      <video
+        data-lazy-src="./studio_example_piplus_30fps.mp4?v=20260905-studio-examples-v1"
+        poster="./studio_example_piplus_poster.jpg?v=20260905-studio-examples-v1"
+        width="1280"
+        height="786"
+        controls
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        aria-label="PiPlus retargeting result produced in the UMR Motion Retargeting Studio"
+      ></video>
+    </div>
+    <figcaption class="umr-video-caption">PiPlus</figcaption>
+  </figure>
+  <figure class="umr-studio-example-card">
+    <div class="umr-studio-example-media">
+      <video
+        data-lazy-src="./studio_example_adam_30fps.mp4?v=20260905-studio-examples-v1"
+        poster="./studio_example_adam_poster.jpg?v=20260905-studio-examples-v1"
+        width="1280"
+        height="786"
+        controls
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        aria-label="Adam retargeting result produced in the UMR Motion Retargeting Studio"
+      ></video>
+    </div>
+    <figcaption class="umr-video-caption">Adam</figcaption>
+  </figure>
+  <figure class="umr-studio-example-card">
+    <div class="umr-studio-example-media">
+      <video
+        data-lazy-src="./studio_example_fourier_n1_30fps.mp4?v=20260905-studio-examples-v1"
+        poster="./studio_example_fourier_n1_poster.jpg?v=20260905-studio-examples-v1"
+        width="1280"
+        height="786"
+        controls
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        aria-label="Fourier N1 retargeting result produced in the UMR Motion Retargeting Studio"
+      ></video>
+    </div>
+    <figcaption class="umr-video-caption">Fourier N1</figcaption>
+  </figure>
+</div>
+
+<section class="umr-studio-launch-card" aria-labelledby="umr-studio-launch-title">
+  <div>
+    <span class="mj-eyebrow">Interactive browser application</span>
+    <h4 id="umr-studio-launch-title">Open the UMR Motion Retargeting Studio</h4>
+  </div>
+  <a class="button is-normal is-dark umr-studio-launch-button" href="./umr_studio.html">
+    <span>Launch Studio</span>
+    <span class="icon" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+  </a>
+</section>
+
+<template id="umr-studio-template">
+<div class="mj-studio-shell">
+  <aside class="mj-motion-sidebar" aria-label="Target motion browser">
+    <div class="mj-motion-sidebar-heading">
+      <strong>Reference library</strong>
+    </div>
+    <select id="mj-motion-source" hidden aria-hidden="true" tabindex="-1"></select>
+    <div id="mj-motion-list" class="mj-motion-list" aria-label="Available reference motions">
+      <div class="mj-motion-library-empty">Loading motions…</div>
+    </div>
+  </aside>
+<div id="mujoco-tpose-viewer" class="mj-viewer" data-view-stage="editor" data-robot-source="empty">
+  <div class="mj-viewer-toolbar">
+    <div>
+      <strong>UMR Robot Retargeting Studio</strong>
+      <span id="mj-status" data-state="loading">Loading MuJoCo WASM…</span>
+    </div>
+  </div>
+
+  <div class="mj-viewer-layout">
+    <div id="mj-stage" class="mj-stage">
+      <div class="mj-scene-grid">
+        <div class="mj-scene-pane mj-robot-scene">
+      <canvas id="mj-canvas" aria-label="Interactive MuJoCo robot viewport"></canvas>
+      <div id="mj-loading" class="mj-loading">
+        <span class="mj-spinner" aria-hidden="true"></span>
+        <strong id="mj-loading-title">Initializing MuJoCo…</strong>
+        <span id="mj-loading-detail"></span>
+      </div>
+
+      <div id="mj-model-select-hint" class="mj-model-select-hint" hidden>
+        <span class="mj-model-select-copy">
+          <strong>Choose a robot XML</strong>
+          <small>Select an MJCF under “Models in folder” in the right sidebar.</small>
+        </span>
+        <span class="mj-model-select-arrow" aria-hidden="true">→</span>
+      </div>
+
+      <div class="mj-stage-nav">
+        <div id="mj-stage-views" class="mj-stage-views" aria-label="Visualization stage">
+          <button type="button" data-view="editor" class="is-active">T-pose</button>
+          <button type="button" data-view="sampling" disabled>Samples</button>
+          <button type="button" data-view="classification" disabled>Mesh binding</button>
+          <button type="button" data-view="motion" disabled>Motion</button>
+        </div>
+        <span class="mj-stage-review-hint">Click completed stages to review</span>
+      </div>
+      <div id="mj-tpose-scene-hint" class="mj-tpose-scene-hint" data-state="editing" data-pipeline-stage="tpose" data-collapsed="false">
+        <div class="mj-scene-guide-heading">
+          <span id="mj-tpose-scene-number" class="mj-tpose-scene-number">1</span>
+          <span class="mj-scene-guide-copy">
+            <strong id="mj-tpose-scene-title">Edit the robot T-pose</strong>
+            <small id="mj-tpose-scene-detail">Hover a movable body to reveal its joint axis, then drag to pose it.</small>
+          </span>
+          <span id="mj-scene-guide-state" class="mj-guide-state">Editing</span>
+          <button id="mj-scene-guide-toggle" class="mj-scene-guide-toggle" type="button" aria-expanded="true" aria-label="Collapse stage guide" title="Collapse stage guide"></button>
+        </div>
+        <div id="mj-pipeline-steps" class="mj-pipeline-stages" aria-label="Retargeting progress">
+          <article data-stage="sampling">
+            <div class="mj-pipeline-stage-heading">
+              <span class="mj-pipeline-stage-number">2</span>
+              <span><strong>Surface sampling</strong><small data-stage-state>Waiting</small></span>
+              <output data-stage-percent>0%</output>
+            </div>
+            <div class="mj-stage-progress" role="progressbar" aria-label="Surface sampling" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-stage-progress></span></div>
+          </article>
+          <article data-stage="training">
+            <div class="mj-pipeline-stage-heading">
+              <span class="mj-pipeline-stage-number">3</span>
+              <span><strong>Correspondence training</strong><small data-stage-state>Waiting</small></span>
+              <output data-stage-percent>0%</output>
+            </div>
+            <div class="mj-stage-progress" role="progressbar" aria-label="Correspondence training and mesh binding" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-stage-progress></span></div>
+          </article>
+          <article data-stage="retargeting">
+            <div class="mj-pipeline-stage-heading">
+              <span class="mj-pipeline-stage-number">4</span>
+              <span><strong>Motion retargeting</strong><small data-stage-state>Waiting</small></span>
+              <output data-stage-percent>0%</output>
+            </div>
+            <div class="mj-stage-progress" role="progressbar" aria-label="Motion retargeting" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-stage-progress></span></div>
+          </article>
+        </div>
+        <p id="mj-pipeline-message">Adjust the T-pose or copy its UMR config, then retarget the default Spin Kick clip.</p>
+      </div>
+      <div id="mj-stage-legend" class="mj-stage-legend" hidden>
+        <strong id="mj-stage-legend-title"></strong>
+        <div id="mj-stage-legend-items"></div>
+      </div>
+      <div id="mj-drop-hint" class="mj-drop-hint" hidden>
+        <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+        <strong>Drop or paste your robot MJCF asset here</strong>
+        <span>Select a folder from your computer, including its XML, meshes, textures, and referenced assets.</span>
+        <button id="mj-select-folder" class="button is-small is-dark" type="button">
+          <span class="icon"><i class="fas fa-folder-open"></i></span>
+          <span>Select folder</span>
+        </button>
+      </div>
+      <div id="mj-custom-tpose-reminder" class="mj-custom-tpose-reminder" role="status" aria-live="polite" hidden>
+        Custom robot loaded — adjust it into a <strong>T-pose</strong> before retargeting!
+      </div>
+      <div class="mj-camera-help">Drag empty space: orbit · Drag a robot part: move its joint · Right drag: pan · Wheel: zoom</div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="mj-pose-panel">
+      <h4>T-pose editor</h4>
+      <p id="mj-model-info" class="mj-model-info">Waiting for model…</p>
+
+      <section id="mj-model-browser" class="mj-model-browser" hidden>
+        <div class="mj-model-browser-header">
+          <label for="mj-model-search">Models in folder</label>
+          <span id="mj-model-count"></span>
+        </div>
+        <input id="mj-model-search" class="input is-small" type="search" placeholder="Filter MJCF files">
+        <div id="mj-model-list" class="mj-model-list" role="listbox" aria-label="MJCF models"></div>
+        <p>Choose the MJCF or scene XML to visualize. Referenced assets load only after selection.</p>
+      </section>
+      <div class="mj-pose-actions">
+        <button id="mj-default-pose" class="button is-small is-dark" type="button">Reset</button>
+        <button id="mj-save-tpose" class="button is-small is-dark" type="button">Copy T-pose config</button>
+      </div>
+      <section class="mj-retarget-panel" aria-labelledby="mj-retarget-title">
+        <div class="mj-retarget-heading">
+          <div>
+            <span class="mj-eyebrow">Reference motion</span>
+            <h5 id="mj-retarget-title">Humanoid Character · Spin Kick</h5>
+          </div>
+        </div>
+        <label for="mj-root-body">Robot root / torso body</label>
+        <select id="mj-root-body" class="select is-small" disabled></select>
+        <div id="mj-training-core-control" class="mj-training-core-control" data-state="ready">
+          <div class="mj-training-core-heading">
+            <label for="mj-training-cores">Correspondence training workers</label>
+            <span>Required</span>
+          </div>
+          <select id="mj-training-cores" class="select is-small" required aria-describedby="mj-training-core-help">
+            <option value="1" selected>Detecting available workers…</option>
+          </select>
+          <p id="mj-training-core-help"><strong>Detecting the recommended worker count.</strong> The default is half of this computer's reported maximum.</p>
+        </div>
+        <div class="mj-retarget-actions">
+          <button id="mj-run-retarget" class="button is-small is-dark" type="button" disabled>
+            Retarget
+          </button>
+          <button id="mj-stop-retarget" class="button is-small mj-stop-retarget" type="button" disabled>
+            Stop
+          </button>
+        </div>
+      </section>
+
+      <section id="mj-player" class="mj-player" hidden aria-label="Motion player">
+        <button id="mj-play-motion" class="button is-small is-dark" type="button" aria-label="Play motion">
+          <span class="icon"><i class="fas fa-play"></i></span>
+        </button>
+        <input id="mj-motion-scrubber" type="range" min="0" max="0" value="0" step="1" aria-label="Motion frame">
+        <output id="mj-motion-frame">0 / 0</output>
+        <select id="mj-playback-speed" class="select is-small" aria-label="Playback speed">
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.5">1.5×</option>
+          <option value="2">2×</option>
+        </select>
+      </section>
+      <label class="mj-search-label" for="mj-joint-search">Joint controls</label>
+      <input id="mj-joint-search" class="input is-small" type="search" placeholder="Filter joint names">
+      <div id="mj-joint-list" class="mj-joint-list" aria-live="polite"></div>
+      <p class="mj-privacy-note">
+        Robot files stay in this browser. Sampling, 60-epoch correspondence training, and retargeting run locally on the CPU. Stage 3 uses the selected local worker count. Hinge values are shown in degrees; slide values are shown in metres.
+      </p>
+    </aside>
+  </div>
+
+  <input id="mj-folder-input" type="file" webkitdirectory directory multiple hidden>
+</div>
+</div>
+</template>
+
+<h3 class="umr-section-heading" style="text-align: center;">Comparison with Baselines</h3>
+<div id="comparison-with-baselines" class="umr-baseline-scene-heading">
+  <div class="umr-baseline-scene-heading-title">Locomotion</div>
+</div>
+<p class="umr-baseline-locomotion-note">
+  <span>Both results use the same motion from <a href="https://huggingface.co/datasets/bones-studio/seed" target="_blank" rel="noopener noreferrer">BONES-SEED</a>:</span>
+  <span class="umr-baseline-motion-key">kneeling_start_R_001__A409</span>
+</p>
+<div class="umr-baseline-locomotion-grid" role="group" aria-label="Locomotion baseline comparisons">
+  <figure class="umr-baseline-video-card">
+    <div class="umr-baseline-video">
+      <video data-lazy-src="./comparison_soma_proportional_umr_30fps.mp4?v=20260906-locomotion-comparison-v1" poster="./comparison_soma_proportional_umr_poster.jpg?v=20260906-locomotion-comparison-v1" aria-label="SOMA proportional retargeting with UMR" width="1920" height="1080" controls muted playsinline preload="metadata"></video>
+    </div>
+    <figcaption class="umr-video-caption">SOMA Proportional+UMR</figcaption>
+  </figure>
+  <figure class="umr-baseline-video-card">
+    <div class="umr-baseline-video">
+      <video data-lazy-src="./comparison_soma_uniform_gmr_30fps.mp4?v=20260906-locomotion-comparison-v1" poster="./comparison_soma_uniform_gmr_poster.jpg?v=20260906-locomotion-comparison-v1" aria-label="SOMA uniform retargeting with GMR" width="1920" height="1080" controls muted playsinline preload="metadata"></video>
+    </div>
+    <figcaption class="umr-video-caption">SOMA Uniform + GMR</figcaption>
+  </figure>
+</div>
+
+<div class="umr-baseline-scene-heading">
+  <div class="umr-baseline-scene-heading-title">Robot-Object Interaction</div>
+</div>
+<p class="umr-baseline-locomotion-note">
+  <span>Motions from <a href="https://omnicontact.github.io/" target="_blank" rel="noopener noreferrer">OmniContact</a></span>
+</p>
+<div class="umr-baseline-locomotion-grid" role="group" aria-label="Robot-object interaction baseline comparisons">
+  <figure class="umr-baseline-video-card">
+    <div class="umr-baseline-video">
+      <video data-lazy-src="./comparison_omnicontact_box_push_30fps.mp4?v=20260907-centered-camera-v1" poster="./comparison_omnicontact_box_push_poster.jpg?v=20260907-centered-camera-v1" aria-label="Push Box comparison with Mocap data, UMR, and OmniRetarget" width="2560" height="1440" controls muted playsinline preload="metadata"></video>
+    </div>
+    <figcaption class="umr-video-caption">Push Box</figcaption>
+  </figure>
+  <figure class="umr-baseline-video-card">
+    <div class="umr-baseline-video">
+      <video data-lazy-src="./comparison_omnicontact_soccer_carry_30fps.mp4?v=20260907-centered-camera-v1" poster="./comparison_omnicontact_soccer_carry_poster.jpg?v=20260907-centered-camera-v1" aria-label="Relocate Ball comparison with Mocap data, UMR, and OmniRetarget" width="2560" height="1440" controls muted playsinline preload="metadata"></video>
+    </div>
+    <figcaption class="umr-video-caption">Relocate Ball</figcaption>
+  </figure>
+</div>
+
+<div class="umr-baseline-scene-heading umr-baseline-scene-heading--next">
+  <div class="umr-baseline-scene-heading-title">Robot-Scene Interaction</div>
+</div>
+<p class="umr-baseline-locomotion-note">
+  <span>Motions from <a href="https://research.nvidia.com/labs/dair/grail/" target="_blank" rel="noopener noreferrer">GRAIL</a></span>
+</p>
+<div class="umr-baseline-locomotion-grid" role="group" aria-label="Robot-scene interaction comparisons">
+  <figure class="umr-baseline-video-card">
+    <div class="umr-baseline-video">
+      <video data-lazy-src="./comparison_grail_chair_sitting_30fps.mp4?v=20260907-grail-scene-2k-v1" poster="./comparison_grail_chair_sitting_poster.jpg?v=20260907-grail-scene-2k-v1" aria-label="GRAIL chair sitting comparison" width="2560" height="1440" controls muted playsinline preload="metadata"></video>
+    </div>
+    <figcaption class="umr-video-caption">Chair Sitting</figcaption>
+  </figure>
+  <figure class="umr-baseline-video-card">
+    <div class="umr-baseline-video">
+      <video data-lazy-src="./comparison_grail_stairs_updown_30fps.mp4?v=20260907-grail-scene-2k-v1" poster="./comparison_grail_stairs_updown_poster.jpg?v=20260907-grail-scene-2k-v1" aria-label="GRAIL stairs up-down comparison" width="2560" height="1440" controls muted playsinline preload="metadata"></video>
+    </div>
+    <figcaption class="umr-video-caption">Walking on Stairs</figcaption>
+  </figure>
+</div>
+<h3 class="umr-section-heading" style="text-align: center;">Deployment in Real World</h3>
+<blockquote style="text-align: justify; text-justify: inter-word;">
+  The demonstrations below show policies trained from reference motions retargeted by UMR and deployed to perform a range of real-world tasks. The reference data comes from <a href="https://github.com/xbpeng/MimicKit">MimicKit</a>, <a href="https://research.nvidia.com/labs/dair/grail/">GRAIL</a>, and <a href="https://omnicontact.github.io/">OmniContact</a>, with policy training powered by the <a href="https://beyondmimic.github.io/">BeyondMimic</a>, <a href="https://github.com/amazon-far/holosoma">Holosoma</a>, and <a href="https://omnicontact.github.io/">OmniContact</a> pipelines.
+</blockquote>
+<div style="text-align:center;">
+  <video data-lazy-src="./P1000445_30fps.mp4" aria-label="UMR motion deployed on a physical humanoid robot" width="1920" height="1080" controls muted playsinline preload="metadata" style="display:block; width:min(960px, 100%); height:auto; margin:0 auto; border-radius:12px; background:#000;"></video>
+  <p class="umr-video-caption">Spin Kick (MimicKit)</p>
+  <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:24px; width:min(1200px, 100%); margin:24px auto 0; align-items:start;">
+    <div style="min-width:0;">
+      <video data-lazy-src="./P1000472_2s-9s_30fps.mp4?v=20260829-9p5s-v2" aria-label="Walking on stairs with a physical humanoid robot" width="1920" height="1080" controls muted playsinline preload="metadata" style="display:block; width:100%; height:auto; margin:0; border-radius:12px; background:#000;"></video>
+      <p class="umr-video-caption">Walking on Stairs (GRAIL)</p>
+    </div>
+    <div style="min-width:0;">
+      <video data-lazy-src="./P1000449_1s-end_30fps.mp4" aria-label="Chair sitting with a physical humanoid robot" width="1920" height="1080" controls muted playsinline preload="metadata" style="display:block; width:100%; height:auto; margin:0; border-radius:12px; background:#000;"></video>
+      <p class="umr-video-caption">Chair Sitting (GRAIL)</p>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:24px; width:min(1200px, 100%); margin:24px auto 0; align-items:start;">
+    <div style="min-width:0;">
+      <video data-lazy-src="./P1000626_30fps.mp4" aria-label="Ball carrying while walking backward with a physical humanoid robot" width="1920" height="1080" controls muted playsinline preload="metadata" style="display:block; width:100%; height:auto; margin:0; border-radius:12px; background:#000;"></video>
+      <p class="umr-video-caption">Ball Carrying While Walking Backward (OmniContact)</p>
+    </div>
+    <div style="min-width:0;">
+      <video data-lazy-src="./P1000642_30fps.mp4" aria-label="Box relocation with a physical humanoid robot" width="1920" height="1080" controls muted playsinline preload="metadata" style="display:block; width:100%; height:auto; margin:0; border-radius:12px; background:#000;"></video>
+      <p class="umr-video-caption">Box Relocation (OmniContact)</p>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8 has-text-centered">
+        <div class="content">
+          <p>
+            Website template borrowed from <a href="https://github.com/nerfies/nerfies.github.io">NeRFies</a> and <a href="https://github.com/shunzh/project_website">the Jekyll fork</a>, with interactive viewer adapted from <a href="https://github.com/fan-ziqi/robot_viewer">Robot Viewer</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="./static/js/umr-page-loader.js?v=20260905-shadow-stability-v11"></script>
+
+</body>
+</html>

@@ -1,0 +1,1174 @@
+import * as THREE from "../vendor/three/three.module.js";
+import { OrbitControls } from "../vendor/three/OrbitControls.js";
+import { RoomEnvironment } from "../vendor/three/addons/environments/RoomEnvironment.js";
+import { FontLoader } from "../vendor/three/addons/loaders/FontLoader.js";
+import { EffectComposer } from "../vendor/three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "../vendor/three/addons/postprocessing/RenderPass.js";
+import { ShaderPass } from "../vendor/three/addons/postprocessing/ShaderPass.js";
+import { SMAAPass } from "../vendor/three/addons/postprocessing/SMAAPass.js";
+import { OutputPass } from "../vendor/three/addons/postprocessing/OutputPass.js";
+
+export function mountCompactAutoplayScene(root, options = {}) {
+const canvas = root && root.querySelector("canvas");
+const ASSET_ROOT = options.assetRoot || "/static/assets/multi_robot_scene/";
+const ASSET_VERSION = options.assetVersion || "20260823-all-source-topology-v5";
+
+function assetUrl(path) {
+  return ASSET_ROOT + path + "?v=" + ASSET_VERSION;
+}
+
+if (root && canvas) {
+  const observer = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    observer.disconnect();
+    start().catch((error) => {
+      console.error("UMR compact autoplay scene failed:", error);
+      root.dataset.error = error instanceof Error ? error.message : String(error);
+      root.dataset.state = "error";
+    });
+  }, { rootMargin: "320px 0px" });
+  observer.observe(root);
+}
+
+async function fetchJson(path) {
+  const response = await fetch(assetUrl(path));
+  if (!response.ok) throw new Error("Could not load " + path + " (" + response.status + ")");
+  return response.json();
+}
+
+async function fetchArray(path, Type) {
+  const response = await fetch(assetUrl(path));
+  if (!response.ok) throw new Error("Could not load " + path + " (" + response.status + ")");
+  return new Type(await response.arrayBuffer());
+}
+
+async function fetchBundle(info) {
+  const response = await fetch(assetUrl(info.path));
+  if (!response.ok) throw new Error("Could not load " + info.path + " (" + response.status + ")");
+  let body = response.body;
+  if (info.encoding === "gzip") {
+    if (!globalThis.DecompressionStream) {
+      throw new Error("This browser does not support gzip asset bundles.");
+    }
+    body = body.pipeThrough(new DecompressionStream("gzip"));
+  }
+  const buffer = await new Response(body).arrayBuffer();
+  if (info.byte_length && buffer.byteLength !== info.byte_length) {
+    throw new Error(
+      "Invalid bundle length for " + info.path + ": " + buffer.byteLength + " != " + info.byte_length
+    );
+  }
+  return buffer;
+}
+
+async function loadArray(reference, Type, bundles) {
+  if (typeof reference === "string") return fetchArray(reference, Type);
+  const buffer = bundles[reference.bundle];
+  if (!buffer) throw new Error("Missing asset bundle: " + reference.bundle);
+  const packedTypes = {
+    f32: Float32Array,
+    i16: Int16Array,
+    u16: Uint16Array,
+    u32: Uint32Array,
+  };
+  const PackedType = packedTypes[reference.component_type] || Type;
+  if (reference.byte_shuffle > 1) {
+    const itemSize = reference.byte_shuffle;
+    const source = new Uint8Array(
+      buffer,
+      reference.byte_offset,
+      reference.count * itemSize
+    );
+    const restored = new Uint8Array(source.byteLength);
+    for (let byteIndex = 0; byteIndex < itemSize; byteIndex++) {
+      let sourceIndex = byteIndex * reference.count;
+      let destinationIndex = byteIndex;
+      for (let element = 0; element < reference.count; element++) {
+        restored[destinationIndex] = source[sourceIndex++];
+        destinationIndex += itemSize;
+      }
+    }
+    return new PackedType(restored.buffer);
+  }
+  return new PackedType(buffer, reference.byte_offset, reference.count);
+}
+
+async function loadSourceVertexPayload(reference, bundles) {
+  if (typeof reference === "string") {
+    const values = await fetchArray(reference, Uint16Array);
+    return {
+      buffer: values.buffer,
+      byteOffset: values.byteOffset,
+      length: values.length,
+      byteShuffle: 1,
+    };
+  }
+  const bundle = bundles[reference.bundle];
+  if (!bundle) throw new Error("Missing asset bundle: " + reference.bundle);
+  const byteShuffle = Number(reference.byte_shuffle || 1);
+  const byteLength = reference.count * byteShuffle;
+  return {
+    buffer: bundle.slice(reference.byte_offset, reference.byte_offset + byteLength),
+    byteOffset: 0,
+    length: reference.count,
+    byteShuffle,
+  };
+}
+
+function viewAttribute(array, offset, count, itemSize) {
+  return new THREE.BufferAttribute(array.subarray(offset, offset + count), itemSize);
+}
+
+function decodeXorDeltaInPlace(words, frameWidth) {
+  for (let frameStart = frameWidth; frameStart < words.length; frameStart += frameWidth) {
+    const previous = frameStart - frameWidth;
+    for (let index = 0; index < frameWidth; index++) {
+      words[frameStart + index] ^= words[previous + index];
+    }
+  }
+  return words;
+}
+
+function decodeAddDeltaFramesInPlace(words, frameWidth) {
+  for (let frameStart = frameWidth; frameStart < words.length; frameStart += frameWidth) {
+    const previous = frameStart - frameWidth;
+    for (let index = 0; index < frameWidth; index++) {
+      words[frameStart + index] += words[previous + index];
+    }
+  }
+  return words;
+}
+
+function decodeAddDeltaVectorsInPlace(words, frameWidth, itemSize) {
+  for (let frameStart = 0; frameStart < words.length; frameStart += frameWidth) {
+    for (let index = itemSize; index < frameWidth; index++) {
+      words[frameStart + index] += words[frameStart + index - itemSize];
+    }
+  }
+  return words;
+}
+
+function decodeXorVectorRangeInPlace(values, offset, count, itemSize) {
+  const words = new Uint32Array(values.buffer, values.byteOffset, values.length);
+  const end = offset + count;
+  for (let index = offset + itemSize; index < end; index++) {
+    words[index] ^= words[index - itemSize];
+  }
+}
+
+function decodeIndexDeltaRangeInPlace(values, offset, count) {
+  const end = offset + count;
+  for (let index = offset + 1; index < end; index++) {
+    values[index] += values[index - 1];
+  }
+}
+
+function decodeQuantizedBuffer(values, meshes, prefix, itemSize) {
+  const restored = new Float32Array(values.length);
+  for (const mesh of Object.values(meshes)) {
+    const offset = mesh[prefix + "_offset"];
+    const count = mesh[prefix + "_count"] || 0;
+    if (!count) continue;
+    const end = offset + count;
+    for (let index = offset + itemSize; index < end; index++) {
+      values[index] += values[index - itemSize];
+    }
+    const quantization = mesh[prefix + "_quantization"];
+    for (let index = offset; index < end; index++) {
+      const component = (index - offset) % itemSize;
+      restored[index] = (
+        values[index] * quantization.scale[component] + quantization.offset[component]
+      );
+    }
+  }
+  return restored;
+}
+
+function decodeRobotBuffers(meta, positions, indices, normals, uvs) {
+  const encodings = meta.buffer_encodings || {};
+  for (const mesh of Object.values(meta.meshes)) {
+    if (encodings.positions && !encodings.positions.startsWith("quantized-")) {
+      decodeXorVectorRangeInPlace(positions, mesh.position_offset, mesh.position_count, 3);
+    }
+    if (encodings.indices) {
+      decodeIndexDeltaRangeInPlace(indices, mesh.index_offset, mesh.index_count);
+    }
+    if (normals && encodings.normals && !encodings.normals.startsWith("quantized-") && mesh.normal_count) {
+      decodeXorVectorRangeInPlace(normals, mesh.normal_offset, mesh.normal_count, 3);
+    }
+    if (uvs && encodings.uvs && !encodings.uvs.startsWith("quantized-") && mesh.uv_count) {
+      decodeXorVectorRangeInPlace(uvs, mesh.uv_offset, mesh.uv_count, 2);
+    }
+  }
+  return {
+    positions: encodings.positions?.startsWith("quantized-")
+      ? decodeQuantizedBuffer(positions, meta.meshes, "position", 3)
+      : positions,
+    indices,
+    normals: normals && encodings.normals?.startsWith("quantized-")
+      ? decodeQuantizedBuffer(normals, meta.meshes, "normal", 3)
+      : normals,
+    uvs: uvs && encodings.uvs?.startsWith("quantized-")
+      ? decodeQuantizedBuffer(uvs, meta.meshes, "uv", 2)
+      : uvs,
+  };
+}
+
+function strengthenActorMaterialContrast(material, amount = 1.15) {
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <opaque_fragment>",
+      "outgoingLight = max((outgoingLight - vec3(0.18)) * " + amount.toFixed(4) +
+        " + vec3(0.18), vec3(0.0));\n#include <opaque_fragment>"
+    );
+  };
+  material.customProgramCacheKey = () => "actor-lighting-contrast-" + amount.toFixed(4);
+  material.needsUpdate = true;
+  return material;
+}
+
+function compressTexturedMaterialRange(material, blackFloor = 0.07, whiteCeiling = 0.76) {
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <map_fragment>",
+      [
+        "#include <map_fragment>",
+        "diffuseColor.rgb = mix(",
+        "  vec3(" + blackFloor.toFixed(4) + "),",
+        "  vec3(" + whiteCeiling.toFixed(4) + "),",
+        "  clamp(diffuseColor.rgb, 0.0, 1.0)",
+        ");",
+      ].join("\n")
+    );
+  };
+  material.customProgramCacheKey = () => (
+    "textured-range-" + blackFloor.toFixed(4) + "-" + whiteCeiling.toFixed(4)
+  );
+  material.needsUpdate = true;
+  return material;
+}
+
+function robotDisplayColor(info, robotKey, hasColorMap) {
+  const rgba = info.rgba || [0.8, 0.8, 0.8, 1];
+  const rgbaLuma = 0.2126 * rgba[0] + 0.7152 * rgba[1] + 0.0722 * rgba[2];
+  const dark = () => new THREE.Color(0.2, 0.2, 0.2).multiplyScalar(0.48);
+  if (hasColorMap) return new THREE.Color(0xffffff);
+  const body = String(info.body || "").toLowerCase();
+  if (robotKey.includes("booster_k1")) {
+    if (body === "trunk") return new THREE.Color(0.7, 0.7, 0.7).multiplyScalar(0.66);
+    return dark();
+  }
+  if (robotKey.includes("minipi_plus")) {
+    const ankle = body === "l_ankle_pitch_link" || body === "r_ankle_pitch_link";
+    return ankle ? new THREE.Color(0xc7cdd2) : dark();
+  }
+  if (robotKey.includes("unitree_h2")) {
+    if (rgbaLuma > 0.55) {
+      return new THREE.Color(rgba[0], rgba[1], rgba[2]).multiplyScalar(0.66);
+    }
+    return dark();
+  }
+  return new THREE.Color(rgba[0], rgba[1], rgba[2]).multiplyScalar(rgbaLuma < 0.34 ? 0.48 : 0.66);
+}
+
+function robotMaterial(info, colorMap, robotKey) {
+  const rgba = info.rgba || [0.8, 0.8, 0.8, 1];
+  const color = robotDisplayColor(info, robotKey, Boolean(colorMap));
+  const colorLuma = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+  const textured = Boolean(colorMap);
+  const dark = colorLuma < 0.18;
+  const material = new THREE.MeshPhysicalMaterial({
+    color,
+    map: colorMap,
+    roughness: textured ? 0.58 : (dark ? 0.54 : 0.44),
+    metalness: textured ? 0.12 : (dark ? 0.03 : 0.12),
+    clearcoat: textured ? 0.04 : (dark ? 0.05 : 0.16),
+    clearcoatRoughness: textured ? 0.62 : (dark ? 0.58 : 0.42),
+    sheen: 0,
+    sheenRoughness: 0.78,
+    envMapIntensity: textured ? 0.3 : (dark ? 0.18 : 0.4),
+    specularIntensity: textured ? 0.42 : (dark ? 0.3 : 0.52),
+    specularColor: dark ? new THREE.Color(0x8f969c) : new THREE.Color(0xe7edf2),
+    side: THREE.DoubleSide,
+    transparent: rgba[3] < 0.999,
+    opacity: Math.max(0.08, rgba[3]),
+    depthWrite: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -0.15,
+    polygonOffsetUnits: -0.25,
+  });
+  if (textured && robotKey.includes("engineai_t800")) {
+    return compressTexturedMaterialRange(material);
+  }
+  return textured ? material : strengthenActorMaterialContrast(material, 1.08);
+}
+
+function createOriginalGround(scene, camera, controls) {
+  const gridColor = new THREE.Color(0x161c23);
+  const horizonColor = new THREE.Color(0xdce8f7);
+  const fresnelCameraPosition = new THREE.Vector3();
+  const cameraOffset = new THREE.Vector3();
+  const fresnelOrigin = new THREE.Vector2();
+  const fresnelForward = new THREE.Vector2(0, 1);
+  const referenceFov = 32;
+  const referenceElevation = Math.atan2(2.2, 6);
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x303840,
+    roughness: 0.84,
+    metalness: 0,
+    envMapIntensity: 0,
+    side: THREE.DoubleSide,
+  });
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.groundGridColor = { value: gridColor };
+    shader.uniforms.groundHorizonColor = { value: horizonColor };
+    shader.uniforms.groundFresnelCameraPosition = { value: fresnelCameraPosition };
+    shader.uniforms.groundFresnelOriginXY = { value: fresnelOrigin };
+    shader.uniforms.groundFresnelForwardXY = { value: fresnelForward };
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        [
+          "#include <common>",
+          "varying vec2 vGroundGridPosition;",
+          "varying vec3 vGroundWorldPosition;",
+        ].join("\n")
+      )
+      .replace(
+        "#include <begin_vertex>",
+        [
+          "#include <begin_vertex>",
+          "vGroundGridPosition = position.xy;",
+          "vGroundWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;",
+        ].join("\n")
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        [
+          "#include <common>",
+          "varying vec2 vGroundGridPosition;",
+          "varying vec3 vGroundWorldPosition;",
+          "uniform vec3 groundGridColor;",
+          "uniform vec3 groundHorizonColor;",
+          "uniform vec3 groundFresnelCameraPosition;",
+          "uniform vec2 groundFresnelOriginXY;",
+          "uniform vec2 groundFresnelForwardXY;",
+          "float stableGroundGridLine(float coordinate) {",
+          "  float spacing = 0.75;",
+          "  float halfWidth = 0.009;",
+          "  float pixelSpan = max(fwidth(coordinate), 1e-6);",
+          "  float distanceToLine = abs(fract(coordinate / spacing + 0.5) - 0.5) * spacing;",
+          "  float antialiasWidth = max(pixelSpan * 1.25, 0.001);",
+          "  float line = 1.0 - smoothstep(max(0.0, halfWidth - antialiasWidth), halfWidth + antialiasWidth, distanceToLine);",
+          "  float cellsPerPixel = pixelSpan / spacing;",
+          "  float frequencyFade = 1.0 - smoothstep(0.16, 0.48, cellsPerPixel);",
+          "  return line * frequencyFade;",
+          "}",
+        ].join("\n")
+      )
+      .replace(
+        "#include <color_fragment>",
+        [
+          "#include <color_fragment>",
+          "float groundGridMask = max(",
+          "  stableGroundGridLine(vGroundGridPosition.x),",
+          "  stableGroundGridLine(vGroundGridPosition.y)",
+          ");",
+          "diffuseColor.rgb = mix(diffuseColor.rgb, groundGridColor, groundGridMask * 0.58);",
+        ].join("\n")
+      )
+      .replace(
+        "#include <opaque_fragment>",
+        [
+          "vec3 groundReferenceViewDirection = normalize(groundFresnelCameraPosition - vGroundWorldPosition);",
+          "float groundNdotV = clamp(abs(groundReferenceViewDirection.z), 0.0, 1.0);",
+          "float groundFresnel = 0.02 + 0.98 * pow(1.0 - groundNdotV, 3.0);",
+          "float groundForwardDistance = dot(vGroundWorldPosition.xy - groundFresnelOriginXY, groundFresnelForwardXY);",
+          "float groundHorizonGate = 1.0 / (1.0 + exp(-0.22 * (groundForwardDistance - 3.0)));",
+          "outgoingLight = mix(outgoingLight, groundHorizonColor, clamp(groundFresnel * groundHorizonGate * 0.52, 0.0, 0.52));",
+          "#include <opaque_fragment>",
+        ].join("\n")
+      );
+  };
+  material.customProgramCacheKey = () => "stable-ground-grid-fresnel-forward-horizon-v2";
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), material);
+  ground.position.z = -0.004;
+  ground.receiveShadow = false;
+  ground.castShadow = false;
+  scene.add(ground);
+  const shadowCatcher = new THREE.Mesh(
+    new THREE.PlaneGeometry(160, 160),
+    new THREE.ShadowMaterial({
+      color: 0x101419,
+      opacity: 0.38,
+      transparent: true,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2
+    })
+  );
+  shadowCatcher.position.z = -0.001;
+  shadowCatcher.receiveShadow = true;
+  shadowCatcher.castShadow = false;
+  shadowCatcher.material.depthWrite = false;
+  shadowCatcher.renderOrder = 1;
+  scene.add(shadowCatcher);
+
+  return () => {
+    cameraOffset.subVectors(camera.position, controls.target);
+    if (cameraOffset.lengthSq() < 1e-8) cameraOffset.set(0, -1, 0.35);
+    const horizontalDistance = Math.hypot(cameraOffset.x, cameraOffset.y);
+    if (horizontalDistance > 1e-8) {
+      cameraOffset.z = Math.sign(cameraOffset.z || 1) * horizontalDistance * Math.tan(referenceElevation);
+    }
+    const actualDistance = cameraOffset.length();
+    const actualTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov) * 0.5);
+    const referenceTangent = Math.tan(THREE.MathUtils.degToRad(referenceFov) * 0.5);
+    const referenceDistance = actualDistance * actualTangent / referenceTangent;
+    fresnelCameraPosition.copy(controls.target).addScaledVector(
+      cameraOffset.normalize(),
+      Math.max(0.1, referenceDistance)
+    );
+    fresnelOrigin.set(controls.target.x, controls.target.y);
+    fresnelForward.set(controls.target.x - camera.position.x, controls.target.y - camera.position.y);
+    if (fresnelForward.lengthSq() < 1e-8) fresnelForward.set(0, 1);
+    else fresnelForward.normalize();
+  };
+}
+
+async function start() {
+  root.dataset.state = "loading";
+  const manifest = await fetchJson("manifest.json");
+  const bundleBuffers = Object.fromEntries(await Promise.all(
+    Object.entries(manifest.bundles || {}).map(async ([key, info]) => [key, await fetchBundle(info)])
+  ));
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    alpha: true,
+    premultipliedAlpha: false,
+    depth: true,
+    stencil: false,
+    logarithmicDepthBuffer: true,
+    powerPreference: "high-performance",
+    precision: "highp",
+  });
+  const cssPixels = Math.max(1, root.clientWidth * root.clientHeight);
+  const requestedPixelRatio = Math.min((window.devicePixelRatio || 1) * 1.6, 4);
+  const pixelBudgetRatio = Math.sqrt(2500000 / cssPixels);
+  const renderPixelRatio = Math.max(1, Math.min(requestedPixelRatio, 1.75, pixelBudgetRatio));
+  renderer.setPixelRatio(renderPixelRatio);
+  root.dataset.renderPixelRatio = renderPixelRatio.toFixed(2);
+  renderer.setClearColor(0x33383f, 0);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.94;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // Shadows are refreshed explicitly on the same frame changes as the motion.
+  // The actor scene itself is rendered only once per displayed motion frame.
+  renderer.shadowMap.autoUpdate = false;
+
+  const scene = new THREE.Scene();
+  scene.background = null;
+  const centerX = Number(manifest.center_x || 0);
+  const centerY = Number.isFinite(Number(manifest.center_y))
+    ? Number(manifest.center_y)
+    : -0.5 * Number(manifest.spacing || 3) * (Number(manifest.row_count || 6) - 1);
+  const cameraConfig = {
+    ...(manifest.camera || {}),
+    ...(options.camera || {}),
+  };
+  const initialTarget = new THREE.Vector3(...(cameraConfig.lookat || [5.95413764, -10.82057331, 1]));
+  const camera = new THREE.PerspectiveCamera(Number(cameraConfig.fov || 32), 16 / 9, 0.05, 2000);
+  camera.up.set(0, 0, 1);
+  if (cameraConfig.lookat) {
+    const distance = Number(cameraConfig.distance || 7);
+    const azimuth = THREE.MathUtils.degToRad(Number(cameraConfig.azimuth ?? -135));
+    const elevation = THREE.MathUtils.degToRad(Number(cameraConfig.elevation ?? 18));
+    camera.position.set(
+      initialTarget.x + distance * Math.cos(elevation) * Math.cos(azimuth),
+      initialTarget.y + distance * Math.cos(elevation) * Math.sin(azimuth),
+      initialTarget.z + distance * Math.sin(elevation)
+    );
+  } else {
+    camera.position.set(20.43780647, -21.42060173, 6.70965007);
+  }
+  const controls = new OrbitControls(camera, canvas);
+  controls.target.copy(initialTarget);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = cameraConfig.lookat ? 2 : 5;
+  controls.maxDistance = 1500;
+  controls.update();
+  root.dataset.controls = "orbit";
+  controls.addEventListener("start", () => { root.dataset.cameraInteracting = "true"; });
+  controls.addEventListener("end", () => { root.dataset.cameraInteracting = "false"; });
+
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.02).texture;
+    if ("environmentIntensity" in scene) scene.environmentIntensity = 0.95;
+    pmrem.dispose();
+  } catch (error) {
+    console.warn("Room environment could not be initialized.", error);
+  }
+
+  scene.add(new THREE.HemisphereLight(0xf7f9fb, 0x30343a, 0.48));
+  const keyLight = new THREE.DirectionalLight(0xfff8ef, 5.25);
+  keyLight.position.set(centerX - 9, centerY + 13.8, 15.6);
+  keyLight.target.position.set(centerX, centerY, 0);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(4096, 4096);
+  keyLight.shadow.bias = -0.00018;
+  keyLight.shadow.normalBias = 0.008;
+  keyLight.shadow.radius = 1;
+  keyLight.shadow.camera.near = 8;
+  keyLight.shadow.camera.far = 38;
+  keyLight.shadow.camera.left = -18;
+  keyLight.shadow.camera.right = 18;
+  keyLight.shadow.camera.top = 18;
+  keyLight.shadow.camera.bottom = -18;
+  scene.add(keyLight, keyLight.target);
+  addDirectional(scene, 0x8bb8ff, 0.18, centerX - 12, centerY + 9, 12, centerX, centerY);
+  addDirectional(scene, 0xffedd8, 0.58, centerX - 7.5, centerY - 10.5, 7.5, centerX, centerY);
+  addDirectional(scene, 0xf4f8ff, 0.5, centerX + 4.5, centerY + 9.6, 10.2, centerX, centerY);
+  addDirectional(scene, 0xffffff, 0.42, centerX - 3, centerY + 1.8, 15, centerX, centerY);
+  const updateGround = createOriginalGround(scene, camera, controls);
+
+  const initialPixelWidth = Math.max(1, Math.floor(root.clientWidth * renderer.getPixelRatio()));
+  const initialPixelHeight = Math.max(1, Math.floor(root.clientHeight * renderer.getPixelRatio()));
+  const composerTarget = new THREE.WebGLRenderTarget(initialPixelWidth, initialPixelHeight, {
+    format: THREE.RGBAFormat,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    depthBuffer: true,
+    stencilBuffer: false,
+  });
+  const composer = new EffectComposer(renderer, composerTarget);
+  composer.setPixelRatio(renderer.getPixelRatio());
+  composer.setSize(Math.max(1, root.clientWidth), Math.max(1, root.clientHeight));
+  composer.addPass(new RenderPass(scene, camera));
+  const smaa = new SMAAPass(initialPixelWidth, initialPixelHeight);
+  composer.addPass(smaa);
+  const cleanImage = new ShaderPass({
+    uniforms: {
+      tDiffuse: { value: null },
+      blackPoint: { value: 0.018 },
+      contrast: { value: 1.022 },
+      saturation: { value: 1.002 },
+      gammaTrim: { value: 1.006 },
+    },
+    vertexShader: [
+      "varying vec2 vUv;",
+      "void main() {",
+      "  vUv = uv;",
+      "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
+      "}",
+    ].join("\n"),
+    fragmentShader: [
+      "uniform sampler2D tDiffuse;",
+      "uniform float blackPoint;",
+      "uniform float contrast;",
+      "uniform float saturation;",
+      "uniform float gammaTrim;",
+      "varying vec2 vUv;",
+      "void main() {",
+      "  vec4 src = texture2D(tDiffuse, vUv);",
+      "  vec3 col = max((src.rgb - blackPoint) / max(1.0 - blackPoint, 1e-5), vec3(0.0));",
+      "  col = (col - 0.5) * contrast + 0.5;",
+      "  float luma = dot(col, vec3(0.299, 0.587, 0.114));",
+      "  col = mix(vec3(luma), col, saturation);",
+      "  col = pow(max(col, vec3(0.0)), vec3(gammaTrim));",
+      "  gl_FragColor = vec4(clamp(col, 0.0, 1.0), src.a);",
+      "}",
+    ].join("\n"),
+  });
+  composer.addPass(cleanImage);
+  const skyColor = new THREE.Color().setRGB(232 / 255, 240 / 255, 252 / 255);
+  const opaqueSky = new ShaderPass({
+    uniforms: {
+      tDiffuse: { value: null },
+      skyColor: { value: new THREE.Vector3(skyColor.r, skyColor.g, skyColor.b) },
+    },
+    vertexShader: [
+      "varying vec2 vUv;",
+      "void main() {",
+      "  vUv = uv;",
+      "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
+      "}",
+    ].join("\n"),
+    fragmentShader: [
+      "uniform sampler2D tDiffuse;",
+      "uniform vec3 skyColor;",
+      "varying vec2 vUv;",
+      "void main() {",
+      "  vec4 src = texture2D(tDiffuse, vUv);",
+      "  float skyMask = 1.0 - smoothstep(0.001, 0.999, src.a);",
+      "  gl_FragColor = vec4(mix(src.rgb, skyColor, skyMask), 1.0);",
+      "}",
+    ].join("\n"),
+  });
+  composer.addPass(new OutputPass());
+  composer.addPass(opaqueSky);
+
+  function renderOriginalScene(updateShadow = false) {
+    updateGround();
+    if (updateShadow) renderer.shadowMap.needsUpdate = true;
+    composer.render();
+  }
+
+  const textureLoader = new THREE.TextureLoader();
+  const textureCache = new Map();
+  function texture(reference) {
+    if (!reference) return Promise.resolve(null);
+    const cacheKey = typeof reference === "string" ? reference : reference.key;
+    if (!textureCache.has(cacheKey)) {
+      const load = async () => {
+        if (typeof reference === "string") return textureLoader.loadAsync(assetUrl(reference));
+        const buffer = bundleBuffers[reference.bundle];
+        if (!buffer) throw new Error("Missing texture bundle: " + reference.bundle);
+        const bytes = new Uint8Array(buffer, reference.byte_offset, reference.byte_length);
+        const objectUrl = URL.createObjectURL(new Blob([bytes], { type: reference.mime_type }));
+        try {
+          return await textureLoader.loadAsync(objectUrl);
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      };
+      textureCache.set(cacheKey, load().then((value) => {
+        value.colorSpace = THREE.SRGBColorSpace;
+        value.flipY = false;
+        value.wrapS = THREE.RepeatWrapping;
+        value.wrapT = THREE.RepeatWrapping;
+        value.minFilter = THREE.LinearMipmapLinearFilter;
+        value.magFilter = THREE.LinearFilter;
+        value.generateMipmaps = true;
+        value.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
+        value.needsUpdate = true;
+        return value;
+      }));
+    }
+    return textureCache.get(cacheKey);
+  }
+
+  const robotResources = {};
+  await Promise.all(Object.entries(manifest.robots).map(async ([key, value]) => {
+    const meta = typeof value === "string" ? await fetchJson(value) : value;
+    const [packedPositions, packedIndices, packedNormals, packedUvs] = await Promise.all([
+      loadArray(meta.buffers.positions, Float32Array, bundleBuffers),
+      loadArray(meta.buffers.indices, Uint32Array, bundleBuffers),
+      meta.buffers.normals ? loadArray(meta.buffers.normals, Float32Array, bundleBuffers) : null,
+      meta.buffers.uvs ? loadArray(meta.buffers.uvs, Float32Array, bundleBuffers) : null,
+    ]);
+    const { positions, indices, normals, uvs } = decodeRobotBuffers(
+      meta,
+      packedPositions,
+      packedIndices,
+      packedNormals,
+      packedUvs
+    );
+    const geometries = {};
+    for (const [name, mesh] of Object.entries(meta.meshes)) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", viewAttribute(positions, mesh.position_offset, mesh.position_count, 3));
+      geometry.setIndex(viewAttribute(indices, mesh.index_offset, mesh.index_count, 1));
+      if (normals && mesh.normal_count) {
+        geometry.setAttribute("normal", viewAttribute(normals, mesh.normal_offset, mesh.normal_count, 3));
+      } else {
+        geometry.computeVertexNormals();
+      }
+      if (uvs && mesh.uv_count) {
+        geometry.setAttribute("uv", viewAttribute(uvs, mesh.uv_offset, mesh.uv_count, 2));
+      }
+      geometry.computeBoundingSphere();
+      geometries[name] = geometry;
+    }
+    const materials = await Promise.all(meta.geoms.map(async (info) => {
+      const mapReference = typeof info.map === "string" ? "robots/" + key + "/" + info.map : info.map;
+      const map = await texture(mapReference);
+      return robotMaterial(info, map, key);
+    }));
+    robotResources[key] = { meta, geometries, materials };
+  }));
+  delete bundleBuffers.geometry;
+  delete bundleBuffers.textures;
+
+  const states = await Promise.all(manifest.entries.map((entry) => (
+    entry.kind === "source"
+      ? loadSourceState(entry, scene, bundleBuffers)
+      : loadRobotState(entry, scene, robotResources, bundleBuffers)
+  )));
+  const cameraRoots = manifest.camera?.root_positions
+    ? await loadArray(manifest.camera.root_positions, Float32Array, bundleBuffers)
+    : null;
+  delete bundleBuffers.animation;
+
+  const labelFont = await new FontLoader().loadAsync(assetUrl("helvetiker_bold.typeface.json"));
+  const reference = new THREE.ShapeGeometry(labelFont.generateShapes("EngineAI T800", 0.23), 8);
+  reference.computeBoundingBox();
+  const rowGroundZ = -reference.boundingBox.min.y;
+  reference.dispose();
+  const followRootLabels = [];
+  for (const label of manifest.column_labels || []) {
+    const object = makeStandingLabel(labelFont, label.label, label.position, "column", label.yaw, rowGroundZ);
+    scene.add(object);
+    if (label.follow_root) {
+      object.userData.rootOffsetX = object.position.x - initialTarget.x;
+      object.userData.rootOffsetY = object.position.y - initialTarget.y;
+      followRootLabels.push(object);
+    }
+  }
+  for (const label of manifest.row_labels || []) {
+    scene.add(makeStandingLabel(labelFont, label.label, label.position, "row", label.yaw, rowGroundZ));
+  }
+
+  const cameraRoot = new THREE.Vector3();
+  let previousCameraRoot = null;
+  function updateCameraFollow(globalFrame, force = false) {
+    if (!cameraRoots || !manifest.camera?.follow_root) return;
+    const frameCount = Number(manifest.camera.frame_count || Math.floor(cameraRoots.length / 3));
+    const frame = Math.max(0, Math.min(frameCount - 1, globalFrame % frameCount));
+    cameraRoot.fromArray(cameraRoots, frame * 3);
+    if (force || !previousCameraRoot) {
+      const delta = cameraRoot.clone().sub(controls.target);
+      controls.target.copy(cameraRoot);
+      camera.position.add(delta);
+    } else {
+      const delta = cameraRoot.clone().sub(previousCameraRoot);
+      controls.target.add(delta);
+      camera.position.add(delta);
+    }
+    for (const label of followRootLabels) {
+      label.position.x = cameraRoot.x + label.userData.rootOffsetX;
+      label.position.y = cameraRoot.y + label.userData.rootOffsetY;
+    }
+    previousCameraRoot = cameraRoot.clone();
+  }
+
+  function resize() {
+    const width = Math.max(1, root.clientWidth);
+    const height = Math.max(1, root.clientHeight);
+    const pixelWidth = Math.round(width * renderer.getPixelRatio());
+    const pixelHeight = Math.round(height * renderer.getPixelRatio());
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      renderer.setSize(width, height, false);
+      composer.setSize(width, height);
+      composer.setPixelRatio(renderer.getPixelRatio());
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      return true;
+    }
+    return false;
+  }
+  new ResizeObserver(resize).observe(root);
+  resize();
+  setFrame(states, 0);
+  updateCameraFollow(0, true);
+  controls.update();
+  renderOriginalScene(true);
+  root.dataset.state = "ready";
+
+  const duration = Math.max(...states.map((state) => state.entry.frame_count / state.entry.fps));
+  let startedAt = performance.now();
+  let previousGlobalFrame = 0;
+  let animationFrameId = null;
+  let viewportVisible = false;
+
+  const shouldAnimate = () => viewportVisible && !document.hidden;
+  const scheduleAnimation = () => {
+    if (!shouldAnimate() || animationFrameId !== null) return;
+    animationFrameId = requestAnimationFrame(animate);
+  };
+
+  function animate(now) {
+    animationFrameId = null;
+    if (!shouldAnimate()) return;
+    const elapsed = ((now - startedAt) / 1000) % duration;
+    const globalFrame = Math.floor(elapsed * manifest.fps);
+    const frameChanged = globalFrame !== previousGlobalFrame;
+    if (frameChanged) {
+      setFrame(states, globalFrame);
+      updateCameraFollow(globalFrame);
+      previousGlobalFrame = globalFrame;
+      root.dataset.frame = String(globalFrame);
+    }
+    const resized = resize();
+    const cameraChanged = controls.update();
+    // Motion data is 30 FPS. Do not redraw the same frame two or four times on
+    // 60/120 Hz displays, but keep requestAnimationFrame active for controls.
+    if (frameChanged || resized || cameraChanged) {
+      renderOriginalScene(frameChanged);
+    }
+    scheduleAnimation();
+  }
+
+  if ("IntersectionObserver" in window) {
+    const playbackObserver = new IntersectionObserver((entries) => {
+      viewportVisible = entries.some(
+        (entry) => entry.isIntersecting && entry.intersectionRatio >= 0.08
+      );
+      scheduleAnimation();
+    }, { threshold: [0.01, 0.08] });
+    playbackObserver.observe(root);
+  } else {
+    viewportVisible = true;
+  }
+  document.addEventListener("visibilitychange", scheduleAnimation);
+  scheduleAnimation();
+}
+
+function addDirectional(scene, color, intensity, x, y, z, targetX, targetY) {
+  const light = new THREE.DirectionalLight(color, intensity);
+  light.position.set(x, y, z);
+  light.target.position.set(targetX, targetY, 0);
+  scene.add(light, light.target);
+}
+
+function geometryForGeom(info, geometries) {
+  if (info.mesh && geometries[info.mesh]) return geometries[info.mesh];
+  const size = info.size || [0.02, 0.02, 0.02];
+  if (info.type === 2) return new THREE.SphereGeometry(size[0], 32, 18);
+  if (info.type === 3) {
+    const geometry = THREE.CapsuleGeometry
+      ? new THREE.CapsuleGeometry(size[0], Math.max(0.001, 2 * size[1]), 8, 24)
+      : new THREE.CylinderGeometry(size[0], size[0], Math.max(0.001, 2 * size[1]), 24);
+    geometry.rotateX(Math.PI / 2);
+    return geometry;
+  }
+  if (info.type === 5) {
+    const geometry = new THREE.CylinderGeometry(size[0], size[0], Math.max(0.001, 2 * size[1]), 32);
+    geometry.rotateX(Math.PI / 2);
+    return geometry;
+  }
+  if (info.type === 6) return new THREE.BoxGeometry(2 * size[0], 2 * size[1], 2 * size[2]);
+  return new THREE.SphereGeometry(Math.max(size[0] || 0.02, 0.02), 20, 12);
+}
+
+async function loadRobotState(entry, scene, resources, bundles) {
+  const resource = resources[entry.robot];
+  const group = new THREE.Group();
+  const baseOffset = new THREE.Vector3().fromArray(entry.offset);
+  group.position.copy(baseOffset);
+  group.rotation.z = Number(entry.yaw || 0);
+  const meshes = resource.meta.geoms.map((info, index) => {
+    const mesh = new THREE.Mesh(geometryForGeom(info, resource.geometries), resource.materials[index]);
+    mesh.matrixAutoUpdate = false;
+    mesh.frustumCulled = false;
+    mesh.castShadow = true;
+    // Animated self-shadowing produces shadow-map acne that crawls across the
+    // robot surface. Keep the ground shadow while removing that unstable pass.
+    mesh.receiveShadow = false;
+    const outline = new THREE.Mesh(
+      mesh.geometry,
+      new THREE.MeshBasicMaterial({
+        color: 0x111820,
+        side: THREE.BackSide,
+        depthWrite: false,
+        toneMapped: false,
+      })
+    );
+    outline.scale.setScalar(1.012);
+    outline.castShadow = false;
+    outline.receiveShadow = false;
+    outline.renderOrder = -1;
+    mesh.add(outline);
+    group.add(mesh);
+    return mesh;
+  });
+  const [packedTransforms, packedAnchors] = await Promise.all([
+    loadArray(entry.transforms, Float32Array, bundles),
+    loadArray(entry.anchors, Float32Array, bundles),
+  ]);
+  const anchors = Float32Array.from(packedAnchors);
+  let transforms = packedTransforms;
+  let poseComponents = 16;
+  if (entry.transforms_encoding === "xor-delta-f32") {
+    const words = packedTransforms instanceof Uint32Array
+      ? packedTransforms
+      : new Uint32Array(packedTransforms.buffer, packedTransforms.byteOffset, packedTransforms.length);
+    decodeXorDeltaInPlace(words, entry.mesh_count * 16);
+    transforms = new Float32Array(words.buffer, words.byteOffset, words.length);
+  } else if (entry.transforms_encoding === "quantized-delta-pose-u16") {
+    const words = packedTransforms instanceof Uint16Array
+      ? packedTransforms
+      : new Uint16Array(packedTransforms.buffer, packedTransforms.byteOffset, packedTransforms.length);
+    poseComponents = entry.pose_components || 7;
+    decodeAddDeltaFramesInPlace(words, entry.mesh_count * poseComponents);
+    transforms = new Float32Array(words.length);
+    const translation = entry.translation_quantization;
+    for (let start = 0; start < words.length; start += poseComponents) {
+      transforms[start] = words[start] * translation.scale[0] + translation.offset[0];
+      transforms[start + 1] = words[start + 1] * translation.scale[1] + translation.offset[1];
+      transforms[start + 2] = words[start + 2] * translation.scale[2] + translation.offset[2];
+      let qx = words[start + 3] / 32767.5 - 1;
+      let qy = words[start + 4] / 32767.5 - 1;
+      let qz = words[start + 5] / 32767.5 - 1;
+      let qw = words[start + 6] / 32767.5 - 1;
+      const inverseLength = 1 / Math.max(1e-12, Math.hypot(qx, qy, qz, qw));
+      qx *= inverseLength;
+      qy *= inverseLength;
+      qz *= inverseLength;
+      qw *= inverseLength;
+      transforms[start + 3] = qx;
+      transforms[start + 4] = qy;
+      transforms[start + 5] = qz;
+      transforms[start + 6] = qw;
+    }
+  }
+  scene.add(group);
+  return { entry, group, baseOffset, meshes, transforms, poseComponents, anchors, type: "robot" };
+}
+
+async function loadSourceState(entry, scene, bundles) {
+  const [sourceVertexPayload, indices, anchors] = await Promise.all([
+    loadSourceVertexPayload(entry.vertices, bundles),
+    loadArray(entry.indices, Uint32Array, bundles),
+    loadArray(entry.anchors, Float32Array, bundles),
+  ]);
+  const framePositions = await decodeSourceVertices(sourceVertexPayload, entry);
+  if (entry.indices_encoding === "delta-u16") {
+    decodeIndexDeltaRangeInPlace(indices, 0, indices.length);
+  }
+  const positions = new Float32Array(entry.vertex_count * 3);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  const color = entry.color || [0.72, 0.7, 0.64];
+  const material = strengthenActorMaterialContrast(new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(color[0], color[1], color[2]),
+    roughness: 0.72,
+    metalness: 0,
+    clearcoat: 0.02,
+    clearcoatRoughness: 0.9,
+    sheen: 0.05,
+    sheenRoughness: 0.82,
+    envMapIntensity: 0.32,
+    side: THREE.FrontSide,
+    depthWrite: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -0.25,
+    polygonOffsetUnits: -0.5,
+  }));
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.frustumCulled = false;
+  mesh.castShadow = true;
+  mesh.receiveShadow = false;
+  const group = new THREE.Group();
+  const baseOffset = new THREE.Vector3().fromArray(entry.offset);
+  group.position.copy(baseOffset);
+  group.rotation.z = Number(entry.yaw || 0);
+  group.add(mesh);
+  scene.add(group);
+  return {
+    entry,
+    group,
+    baseOffset,
+    mesh,
+    geometry,
+    positions,
+    framePositions,
+    anchors: Float32Array.from(anchors),
+    type: "source"
+  };
+}
+
+async function decodeSourceVertices(payload, entry) {
+  const encoding = entry.vertices_encoding;
+  const frameWidth = entry.vertex_count * 3;
+  const supported = new Set([
+    "xor-delta-i16",
+    "spatiotemporal-delta-i16",
+    "second-temporal-spatial-delta-i16",
+  ]);
+  if (!supported.has(encoding)) {
+    throw new Error("Unsupported compact source encoding: " + encoding);
+  }
+
+  if (!("Worker" in window)) {
+    let buffer = payload.buffer;
+    let byteOffset = payload.byteOffset;
+    if (payload.byteShuffle > 1) {
+      const source = new Uint8Array(buffer, byteOffset, payload.length * payload.byteShuffle);
+      const restored = new Uint8Array(source.byteLength);
+      for (let byteIndex = 0; byteIndex < payload.byteShuffle; byteIndex++) {
+        let sourceIndex = byteIndex * payload.length;
+        let destinationIndex = byteIndex;
+        for (let element = 0; element < payload.length; element++) {
+          restored[destinationIndex] = source[sourceIndex++];
+          destinationIndex += payload.byteShuffle;
+        }
+      }
+      buffer = restored.buffer;
+      byteOffset = 0;
+    }
+    const words = new Uint16Array(buffer, byteOffset, payload.length);
+    if (encoding === "xor-delta-i16") {
+      decodeXorDeltaInPlace(words, frameWidth);
+    } else {
+      decodeAddDeltaFramesInPlace(words, frameWidth);
+      if (encoding === "second-temporal-spatial-delta-i16") {
+        decodeAddDeltaFramesInPlace(words, frameWidth);
+      }
+      decodeAddDeltaVectorsInPlace(words, frameWidth, 3);
+    }
+    const signed = new Int16Array(words.buffer, words.byteOffset, words.length);
+    const positions = new Float32Array(words.length);
+    const scale = entry.quantization_scale;
+    const offset = entry.quantization_offset;
+    for (let index = 0; index < words.length; index += 3) {
+      positions[index] = signed[index] * scale[0] + offset[0];
+      positions[index + 1] = signed[index + 1] * scale[1] + offset[1];
+      positions[index + 2] = signed[index + 2] * scale[2] + offset[2];
+    }
+    return positions;
+  }
+
+  const workerUrl = new URL("./compact-scene-decode-worker.js", import.meta.url);
+  workerUrl.searchParams.set("v", "20260904-float32-decode-v3");
+  const worker = new Worker(workerUrl, { type: "module" });
+  try {
+    const decoded = await new Promise((resolve, reject) => {
+      worker.onmessage = (event) => resolve(event.data);
+      worker.onerror = (event) => reject(new Error(event.message || "Source decode worker failed"));
+      worker.postMessage({
+        buffer: payload.buffer,
+        byteOffset: payload.byteOffset,
+        length: payload.length,
+        byteShuffle: payload.byteShuffle,
+        frameWidth,
+        encoding,
+        dequantize: true,
+        quantizationScale: entry.quantization_scale,
+        quantizationOffset: entry.quantization_offset,
+      }, [payload.buffer]);
+    });
+    if (decoded.componentType !== "f32") {
+      throw new Error("Compact source worker returned an unexpected component type.");
+    }
+    return new Float32Array(decoded.buffer, decoded.byteOffset, decoded.length);
+  } finally {
+    worker.terminate();
+  }
+}
+
+function rotatedAnchor(anchors, frame, yaw) {
+  const x = anchors[frame * 2];
+  const y = anchors[frame * 2 + 1];
+  const cosine = Math.cos(yaw);
+  const sine = Math.sin(yaw);
+  return { x: cosine * x - sine * y, y: sine * x + cosine * y };
+}
+
+function setFrame(states, globalFrame) {
+  const matrix = new THREE.Matrix4();
+  const translation = new THREE.Vector3();
+  const rotation = new THREE.Quaternion();
+  const unitScale = new THREE.Vector3(1, 1, 1);
+  for (const state of states) {
+    const entry = state.entry;
+    const frame = globalFrame % entry.frame_count;
+    const current = rotatedAnchor(state.anchors, frame, Number(entry.yaw || 0));
+    if (entry.preserve_world_motion) {
+      state.group.position.copy(state.baseOffset);
+    } else if (entry.normalize_horizontal_origin) {
+      state.group.position.set(state.baseOffset.x - current.x, state.baseOffset.y - current.y, state.baseOffset.z);
+    } else {
+      const initial = rotatedAnchor(state.anchors, 0, Number(entry.yaw || 0));
+      state.group.position.set(
+        state.baseOffset.x + initial.x - current.x,
+        state.baseOffset.y + initial.y - current.y,
+        state.baseOffset.z
+      );
+    }
+    if (state.type === "source") {
+      const width = entry.vertex_count * 3;
+      const base = frame * width;
+      state.positions.set(state.framePositions.subarray(base, base + width));
+      state.geometry.attributes.position.needsUpdate = true;
+      state.geometry.computeVertexNormals();
+      continue;
+    }
+    const poseComponents = state.poseComponents || 16;
+    const frameBase = frame * entry.mesh_count * poseComponents;
+    for (let meshIndex = 0; meshIndex < entry.mesh_count; meshIndex++) {
+      const value = state.transforms;
+      const start = frameBase + meshIndex * poseComponents;
+      if (poseComponents === 7) {
+        translation.set(value[start], value[start + 1], value[start + 2]);
+        rotation.set(value[start + 3], value[start + 4], value[start + 5], value[start + 6]);
+        matrix.compose(translation, rotation, unitScale);
+      } else {
+        matrix.set(
+          value[start], value[start + 1], value[start + 2], value[start + 3],
+          value[start + 4], value[start + 5], value[start + 6], value[start + 7],
+          value[start + 8], value[start + 9], value[start + 10], value[start + 11],
+          value[start + 12], value[start + 13], value[start + 14], value[start + 15]
+        );
+      }
+      state.meshes[meshIndex].matrix.copy(matrix);
+      state.meshes[meshIndex].matrixWorldNeedsUpdate = true;
+    }
+  }
+}
+
+function splitLabelLines(text, kind) {
+  if (kind !== "column" || text.length <= 12 || !text.includes(" ")) return [text];
+  const words = text.trim().split(/\s+/);
+  let splitAt = 1;
+  let balance = Infinity;
+  for (let index = 1; index < words.length; index++) {
+    const score = Math.max(
+      words.slice(0, index).join(" ").length,
+      words.slice(index).join(" ").length
+    );
+    if (score < balance) {
+      balance = score;
+      splitAt = index;
+    }
+  }
+  return [words.slice(0, splitAt).join(" "), words.slice(splitAt).join(" ")];
+}
+
+function makeStandingLabel(font, text, position, kind, yaw, rowGroundZ) {
+  const group = new THREE.Group();
+  group.position.set(
+    Number(position[0] || 0),
+    Number(position[1] || 0),
+    kind === "row" ? rowGroundZ : Number(position[2] || 0)
+  );
+  group.rotation.z = Number(yaw || 0);
+  const lineSpacing = kind === "row" ? 0.25 : 0.315;
+  const lines = splitLabelLines(text, kind);
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xf4f7fa,
+    side: THREE.DoubleSide,
+    toneMapped: true,
+  });
+  const basis = new THREE.Matrix4().makeBasis(
+    new THREE.Vector3(-1, 0, 0),
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(0, 1, 0)
+  );
+  lines.forEach((line, index) => {
+    const geometry = new THREE.ShapeGeometry(font.generateShapes(line, 0.23), 8);
+    geometry.computeBoundingBox();
+    const bounds = geometry.boundingBox;
+    geometry.translate(
+      -0.5 * (bounds.min.x + bounds.max.x),
+      (lines.length - 1 - index) * lineSpacing,
+      0
+    );
+    const label = new THREE.Mesh(geometry, material);
+    label.setRotationFromMatrix(basis);
+    label.castShadow = false;
+    label.receiveShadow = false;
+    group.add(label);
+  });
+  return group;
+}
+
+}

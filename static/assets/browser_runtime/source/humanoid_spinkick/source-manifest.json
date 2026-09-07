@@ -1,0 +1,342 @@
+{
+  "assets": {
+    "face_part_ids": {
+      "bytes": 11640,
+      "dtype": "uint8",
+      "encoding": "gzip",
+      "path": "face_part_ids.uint8.gz",
+      "sha256": "7dc405f85b6abcd50f5f992edc636c2e7aab27c70cb4ec54239161b63f9dcbeb",
+      "shape": [
+        11640
+      ]
+    },
+    "faces": {
+      "bytes": 139680,
+      "dtype": "uint32",
+      "encoding": "gzip",
+      "path": "source_faces.uint32.gz",
+      "sha256": "cb8a05690b9869584d06bad6e9bb0a5b5b2179a0325afbfb62f0535003a49764",
+      "shape": [
+        11640,
+        3
+      ]
+    },
+    "frame_ids": {
+      "bytes": 156,
+      "dtype": "int32",
+      "encoding": "gzip",
+      "path": "frame_ids.int32.gz",
+      "sha256": "4e982162df56ecf36bf5b38d47d19080965bc88934695b3fae01357a53c8a3f7",
+      "shape": [
+        39
+      ]
+    },
+    "motion_vertices_unit": {
+      "bytes": 2905344,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "motion_vertices_unit.float32.gz",
+      "sha256": "c8b92eb10078e8b5e706877f4bc6921996fefcd84b0ea360de06ad36e9a13131",
+      "shape": [
+        39,
+        6208,
+        3
+      ]
+    },
+    "points_ratio_0_5": {
+      "bytes": 49152,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "source_points_ratio_0_5.float32.gz",
+      "sha256": "f45205148c288ce199968de8fd94786246dfa0c48bc0061ae895569ec0a8640e",
+      "shape": [
+        4096,
+        3
+      ]
+    },
+    "root_positions_unit": {
+      "bytes": 468,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "root_positions_unit.float32.gz",
+      "sha256": "3ee2f0b2b82aefc5f396fd33cb62bea959d0d54062b34ea7ea2d66130ae88c08",
+      "shape": [
+        39,
+        3
+      ]
+    },
+    "root_quaternions_wxyz": {
+      "bytes": 624,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "root_quaternions_wxyz.float32.gz",
+      "sha256": "4b248681f26258a502a0d7d6d626f26d11293310485b60cd3a58543d1fe95f68",
+      "shape": [
+        39,
+        4
+      ]
+    },
+    "sample_face_ids": {
+      "bytes": 16384,
+      "dtype": "uint32",
+      "encoding": "gzip",
+      "path": "source_sample_face_ids.uint32.gz",
+      "sha256": "240c3aa1b9f3995440d90f24378077fb4358f3a856fd6290284811e700d0d879",
+      "shape": [
+        4096
+      ]
+    },
+    "template_edge_index": {
+      "bytes": 524288,
+      "dtype": "uint16",
+      "encoding": "gzip",
+      "path": "template_edge_index.uint16.gz",
+      "sha256": "0dfee5a84bdd0404c8cb577be863d8d285647f624235a14837cf8ae874dcc740",
+      "shape": [
+        131072,
+        2
+      ]
+    },
+    "template_sort_index": {
+      "bytes": 8192,
+      "dtype": "uint16",
+      "encoding": "gzip",
+      "path": "template_sort_index.uint16.gz",
+      "sha256": "5d8f1e37a802990b2c8fa0af6ea01a0348037c59ec5e8f525859dc0143a7b83f",
+      "shape": [
+        4096
+      ]
+    },
+    "vertices_ratio_0_5": {
+      "bytes": 74496,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "source_vertices_ratio_0_5.float32.gz",
+      "sha256": "4860b6d0fd4ea55bc9f90fa850b7a404a72437b0d1db1a002afabe7b96afc460",
+      "shape": [
+        6208,
+        3
+      ]
+    }
+  },
+  "bbox_height": 1.6114610433578491,
+  "center_axis": 2,
+  "display_name": "Humanoid Character \u2014 Spin Kick",
+  "edge_graph": "geodesic",
+  "edge_k": 32,
+  "format": "umr-exact-browser-reference-pack-v2",
+  "fps": 30.0,
+  "frames": 39,
+  "interaction_objects": [],
+  "mat_height_m": 0.0,
+  "motion_id": "humanoid_spinkick",
+  "normalization_scale": 1.5136899948120117,
+  "num_points": 4096,
+  "num_slots": 4096,
+  "object_reference": null,
+  "pipeline": "character",
+  "retarget_template_bbox_height": null,
+  "sampling": {
+    "candidate_multiplier": 12,
+    "count": 4096,
+    "min_visible_views": 2,
+    "oversample_ratio": 8,
+    "ray_distance": 0.0,
+    "ray_offset": 0.0001,
+    "seed": 9000
+  },
+  "segments": [
+    {
+      "id": 1,
+      "name": "pelvis",
+      "normal_cost": 0.0,
+      "point_cost": 10.0,
+      "sample_slots": 24
+    },
+    {
+      "id": 2,
+      "name": "torso",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 42
+    },
+    {
+      "id": 3,
+      "name": "head",
+      "normal_cost": 1.0,
+      "point_cost": 10.0,
+      "sample_slots": 16
+    },
+    {
+      "id": 4,
+      "name": "left_upper_arm",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 12
+    },
+    {
+      "id": 5,
+      "name": "left_lower_arm",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 12
+    },
+    {
+      "id": 6,
+      "name": "left_hand",
+      "normal_cost": 1.0,
+      "point_cost": 10.0,
+      "sample_slots": 8
+    },
+    {
+      "id": 7,
+      "name": "right_upper_arm",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 12
+    },
+    {
+      "id": 8,
+      "name": "right_lower_arm",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 12
+    },
+    {
+      "id": 9,
+      "name": "right_hand",
+      "normal_cost": 1.0,
+      "point_cost": 10.0,
+      "sample_slots": 8
+    },
+    {
+      "id": 10,
+      "name": "left_thigh",
+      "normal_cost": 5.0,
+      "point_cost": 1.0,
+      "sample_slots": 20
+    },
+    {
+      "id": 11,
+      "name": "left_shin",
+      "normal_cost": 5.0,
+      "point_cost": 1.0,
+      "sample_slots": 15
+    },
+    {
+      "id": 12,
+      "name": "left_foot",
+      "normal_cost": 0.0,
+      "point_cost": 50.0,
+      "sample_slots": 20
+    },
+    {
+      "id": 13,
+      "name": "right_thigh",
+      "normal_cost": 5.0,
+      "point_cost": 1.0,
+      "sample_slots": 20
+    },
+    {
+      "id": 14,
+      "name": "right_shin",
+      "normal_cost": 5.0,
+      "point_cost": 1.0,
+      "sample_slots": 15
+    },
+    {
+      "id": 15,
+      "name": "right_foot",
+      "normal_cost": 0.0,
+      "point_cost": 50.0,
+      "sample_slots": 20
+    }
+  ],
+  "self_contact": {
+    "body_topk": {
+      "default": 1
+    },
+    "modes": [
+      "threshold_global_topk",
+      "source_clearance_body_pair_topk"
+    ]
+  },
+  "solver": {
+    "bind_nearest_vertex_k": 24,
+    "collision_threshold": 0.1,
+    "damping": 0.0001,
+    "global_step_size": 0.4,
+    "ground_contact_anchor_cost": 0.0,
+    "ground_contact_map_cost": 50.0,
+    "ground_contact_max_points": 128,
+    "ground_contact_snap_threshold_m": 0.0,
+    "ground_contact_threshold_m": 0.1,
+    "ground_penetration_hard_constraint": true,
+    "ground_penetration_hard_constraint_mode": "surface_slots_all",
+    "ground_penetration_hard_slack": false,
+    "ground_penetration_hard_slack_cost": 1000.0,
+    "ground_penetration_margin": 0.0,
+    "ground_penetration_max_points": 128,
+    "ground_penetration_threshold": 0.05,
+    "iters": 8,
+    "max_dq": 0.15,
+    "object_contact_map_cost": 0.0,
+    "object_contact_max_points": 128,
+    "object_contact_snap_threshold_m": 0.005,
+    "object_contact_target_mode": "world_points",
+    "object_contact_threshold_m": 0.1,
+    "pose_init_iters": 10,
+    "project_robot_slots": true,
+    "robot_object_hard_constraint": false,
+    "robot_object_hard_slack": false,
+    "robot_object_hard_slack_cost": 0.0,
+    "robot_object_margin": 0.0,
+    "robot_object_max_pairs": 128,
+    "robot_object_penetration_soft_cost": 0.0,
+    "robot_object_threshold": 0.1,
+    "robot_self_penetration_cost": 0.0,
+    "robot_self_penetration_hard_constraint": false,
+    "robot_self_penetration_hard_slack": true,
+    "robot_self_penetration_hard_slack_cost": 1000.0,
+    "robot_self_penetration_margin": -0.001,
+    "robot_self_penetration_tolerance": 0.01,
+    "root_global_rotation_step_size": 0.5,
+    "root_global_translation_step_size": 0.3,
+    "root_max_rotation_dq": 0.5,
+    "root_max_translation_dq": 0.3,
+    "root_step_limit_mode": "off",
+    "self_contact_map_cost": 0.0,
+    "self_contact_max_pairs": 256,
+    "self_contact_threshold_m": 0.1,
+    "smooth_cost": 1.0,
+    "step_limit_mode": "l2",
+    "temporal_smooth_cost": 0.5,
+    "trajectory_continuity_cost": 0.1,
+    "trajectory_filter_acceleration_cost": 0.1,
+    "trajectory_filter_anchor_end_frames": 1,
+    "trajectory_filter_anchor_start_frames": 1,
+    "trajectory_filter_data_cost": 1.0,
+    "trajectory_filter_jerk_cost": 0.01,
+    "trajectory_filter_mode": "off",
+    "trajectory_filter_root_translation": true,
+    "trajectory_filter_velocity_cost": 0.0,
+    "trajectory_mode": "sequential",
+    "trajectory_selection": "dp",
+    "trajectory_switch_cost": 0.01
+  },
+  "source_center": "bbox_ratio",
+  "source_ground_align": "ground_min",
+  "source_height": 1.5136899948120117,
+  "source_model_type": "character",
+  "source_name": "mimickit_humanoid_character",
+  "source_to_smpl_frame": false,
+  "stored_center_ratio": 0.5,
+  "template_sort": "z_y_x",
+  "training": {
+    "edge_weight": 0.4,
+    "epochs": 100,
+    "learning_rate": 0.001,
+    "min_learning_rate": 1e-05,
+    "repulsion_weight": 0.002
+  }
+}

@@ -1,0 +1,381 @@
+{
+  "assets": {
+    "face_part_ids": {
+      "bytes": 36108,
+      "dtype": "uint8",
+      "encoding": "gzip",
+      "path": "face_part_ids.uint8.gz",
+      "sha256": "911dcb5a08082cd304e419cf1a2a0c408433f4a861d3e305faf6e5cd2013a4ed",
+      "shape": [
+        36108
+      ]
+    },
+    "faces": {
+      "bytes": 433296,
+      "dtype": "uint32",
+      "encoding": "gzip",
+      "path": "source_faces.uint32.gz",
+      "sha256": "e99397c57b8e2dfd69af95b81f99d8db307a682816220982848d35316689b339",
+      "shape": [
+        36108,
+        3
+      ]
+    },
+    "frame_ids": {
+      "bytes": 760,
+      "dtype": "int32",
+      "encoding": "gzip",
+      "path": "frame_ids.int32.gz",
+      "sha256": "7bab9d9d8526a33552f8f78ad422d527f89df5a1eba12ddce2e21cd9e78d4cab",
+      "shape": [
+        190
+      ]
+    },
+    "motion_vertices_unit": {
+      "bytes": 41167680,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "motion_vertices_unit.float32.gz",
+      "sha256": "ea5e01fc3396a9dcd1f1bfe9d1559335486d444e4ce921ff7d54321e3a60316f",
+      "shape": [
+        190,
+        18056,
+        3
+      ]
+    },
+    "points_ratio_0_5": {
+      "bytes": 49152,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "source_points_ratio_0_5.float32.gz",
+      "sha256": "5747647d4895627f73349bd43626449114b2c5789d3a9a5a375390d4ad091bdb",
+      "shape": [
+        4096,
+        3
+      ]
+    },
+    "retarget_template_vertices_ratio_0_5": {
+      "bytes": 216672,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "retarget_template_vertices_ratio_0_5.float32.gz",
+      "sha256": "5d758ee168f22e80b44a8c6221ae3d4035c5e658fdfa3dd4745aa7d5f95a91d0",
+      "shape": [
+        18056,
+        3
+      ]
+    },
+    "root_positions_unit": {
+      "bytes": 2280,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "root_positions_unit.float32.gz",
+      "sha256": "80d1880a596bb7ee3b3e028e906bef36c485648d618b7d803c58bb522188545b",
+      "shape": [
+        190,
+        3
+      ]
+    },
+    "root_quaternions_wxyz": {
+      "bytes": 3040,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "root_quaternions_wxyz.float32.gz",
+      "sha256": "2cebb44b217525ba306a45b7a338e44d3f1d6b465edda895e00d44189de6dee3",
+      "shape": [
+        190,
+        4
+      ]
+    },
+    "sample_face_ids": {
+      "bytes": 16384,
+      "dtype": "uint32",
+      "encoding": "gzip",
+      "path": "source_sample_face_ids.uint32.gz",
+      "sha256": "ed3e8de2cd2facbe5693cee6a0ab34132396574ae83cb9651264ac6d5b4be05d",
+      "shape": [
+        4096
+      ]
+    },
+    "template_edge_index": {
+      "bytes": 524288,
+      "dtype": "uint16",
+      "encoding": "gzip",
+      "path": "template_edge_index.uint16.gz",
+      "sha256": "48c040ba3a4bc4a1b64fe987fe24ba8ff098a69a3ed7a073cd54c267f3f4ecf6",
+      "shape": [
+        131072,
+        2
+      ]
+    },
+    "template_sort_index": {
+      "bytes": 8192,
+      "dtype": "uint16",
+      "encoding": "gzip",
+      "path": "template_sort_index.uint16.gz",
+      "sha256": "b6ef9deba90423509dc3ad8dc257e057ffe4c0b4bd64b3652c1cb9d1c9a97fa5",
+      "shape": [
+        4096
+      ]
+    },
+    "vertices_ratio_0_5": {
+      "bytes": 216672,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "source_vertices_ratio_0_5.float32.gz",
+      "sha256": "8abd0096103248bef41349f8ab66571afc4e5e62af4ec3bd9efaf195c9ac3f01",
+      "shape": [
+        18056,
+        3
+      ]
+    }
+  },
+  "bbox_height": 1.7719727754592896,
+  "center_axis": 1,
+  "display_name": "BoneSeed SOMA \u2014 Flip",
+  "edge_graph": "geodesic",
+  "edge_k": 32,
+  "format": "umr-exact-browser-reference-pack-v2",
+  "fps": 30.0,
+  "frames": 190,
+  "interaction_objects": [],
+  "mat_height_m": 0.0,
+  "motion_id": "boneseed_soma_flip",
+  "normalization_scale": 1.7719727754592896,
+  "num_points": 4096,
+  "num_slots": 4096,
+  "object_reference": null,
+  "pipeline": "soma",
+  "retarget_template_bbox_height": 1.7719727754592896,
+  "sampling": {
+    "candidate_multiplier": 12,
+    "count": 4096,
+    "min_visible_views": 2,
+    "oversample_ratio": 8,
+    "ray_distance": 0.0,
+    "ray_offset": 0.0001,
+    "seed": 9000
+  },
+  "segments": [
+    {
+      "id": 1,
+      "name": "rightHand",
+      "normal_cost": 1.0,
+      "point_cost": 10.0,
+      "sample_slots": 15
+    },
+    {
+      "id": 2,
+      "name": "rightUpLeg",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 25
+    },
+    {
+      "id": 3,
+      "name": "leftArm",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 15
+    },
+    {
+      "id": 4,
+      "name": "head",
+      "normal_cost": 1.0,
+      "point_cost": 1.0,
+      "sample_slots": 20
+    },
+    {
+      "id": 5,
+      "name": "leftLeg",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 20
+    },
+    {
+      "id": 6,
+      "name": "leftFoot",
+      "normal_cost": 1.0,
+      "point_cost": 10.0,
+      "sample_slots": 30
+    },
+    {
+      "id": 7,
+      "name": "torso",
+      "normal_cost": 5.0,
+      "point_cost": 20.0,
+      "sample_slots": 50
+    },
+    {
+      "id": 8,
+      "name": "rightFoot",
+      "normal_cost": 1.0,
+      "point_cost": 10.0,
+      "sample_slots": 30
+    },
+    {
+      "id": 9,
+      "name": "rightArm",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 15
+    },
+    {
+      "id": 10,
+      "name": "leftHand",
+      "normal_cost": 1.0,
+      "point_cost": 10.0,
+      "sample_slots": 15
+    },
+    {
+      "id": 11,
+      "name": "rightLeg",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 20
+    },
+    {
+      "id": 12,
+      "name": "leftForeArm",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 8
+    },
+    {
+      "id": 13,
+      "name": "rightForeArm",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 8
+    },
+    {
+      "id": 14,
+      "name": "leftUpLeg",
+      "normal_cost": 5.0,
+      "point_cost": 10.0,
+      "sample_slots": 25
+    },
+    {
+      "id": 15,
+      "name": "hips",
+      "normal_cost": 0.0,
+      "point_cost": 20.0,
+      "sample_slots": 40
+    },
+    {
+      "id": 16,
+      "name": "leftShoulder",
+      "normal_cost": 0.5,
+      "point_cost": 0.0,
+      "sample_slots": 30
+    },
+    {
+      "id": 17,
+      "name": "rightShoulder",
+      "normal_cost": 0.5,
+      "point_cost": 0.0,
+      "sample_slots": 30
+    },
+    {
+      "id": 18,
+      "name": "leftUpperArm",
+      "normal_cost": 0.10000000149011612,
+      "point_cost": 0.0,
+      "sample_slots": 30
+    },
+    {
+      "id": 19,
+      "name": "rightUpperArm",
+      "normal_cost": 0.10000000149011612,
+      "point_cost": 0.0,
+      "sample_slots": 30
+    }
+  ],
+  "self_contact": {
+    "body_topk": {
+      "default": 1
+    },
+    "modes": [
+      "threshold_global_topk",
+      "source_clearance_body_pair_topk"
+    ]
+  },
+  "solver": {
+    "bind_nearest_vertex_k": 24,
+    "collision_threshold": 0.1,
+    "damping": 0.01,
+    "global_step_size": 0.4,
+    "ground_contact_anchor_cost": 5.0,
+    "ground_contact_map_cost": 10.0,
+    "ground_contact_max_points": 128,
+    "ground_contact_snap_threshold_m": 0.005,
+    "ground_contact_threshold_m": 0.1,
+    "ground_penetration_hard_constraint": true,
+    "ground_penetration_hard_constraint_mode": "surface_slots_all",
+    "ground_penetration_hard_slack": false,
+    "ground_penetration_hard_slack_cost": 1000.0,
+    "ground_penetration_margin": 0.0,
+    "ground_penetration_max_points": 128,
+    "ground_penetration_threshold": 0.05,
+    "iters": 1,
+    "max_dq": 0.15,
+    "object_contact_map_cost": 0.0,
+    "object_contact_max_points": 128,
+    "object_contact_snap_threshold_m": 0.005,
+    "object_contact_target_mode": "world_points",
+    "object_contact_threshold_m": 0.1,
+    "pose_init_iters": 15,
+    "project_robot_slots": true,
+    "robot_object_hard_constraint": false,
+    "robot_object_hard_slack": false,
+    "robot_object_hard_slack_cost": 0.0,
+    "robot_object_margin": 0.0,
+    "robot_object_max_pairs": 128,
+    "robot_object_penetration_soft_cost": 0.0,
+    "robot_object_threshold": 0.1,
+    "robot_self_penetration_cost": 0.0,
+    "robot_self_penetration_hard_constraint": false,
+    "robot_self_penetration_hard_slack": true,
+    "robot_self_penetration_hard_slack_cost": 1000.0,
+    "robot_self_penetration_margin": -0.001,
+    "robot_self_penetration_tolerance": 0.01,
+    "root_global_rotation_step_size": 0.5,
+    "root_global_translation_step_size": 0.3,
+    "root_max_rotation_dq": 0.5,
+    "root_max_translation_dq": 0.3,
+    "root_step_limit_mode": "off",
+    "self_contact_map_cost": 500.0,
+    "self_contact_max_pairs": 256,
+    "self_contact_threshold_m": 0.1,
+    "smooth_cost": 1.0,
+    "step_limit_mode": "l2",
+    "temporal_smooth_cost": 0.5,
+    "trajectory_continuity_cost": 0.01,
+    "trajectory_filter_acceleration_cost": 0.1,
+    "trajectory_filter_anchor_end_frames": 1,
+    "trajectory_filter_anchor_start_frames": 1,
+    "trajectory_filter_data_cost": 1.0,
+    "trajectory_filter_jerk_cost": 0.01,
+    "trajectory_filter_mode": "lqr",
+    "trajectory_filter_root_translation": true,
+    "trajectory_filter_velocity_cost": 0.0,
+    "trajectory_mode": "bidirectional",
+    "trajectory_selection": "dp",
+    "trajectory_switch_cost": 0.01
+  },
+  "source_center": "bbox_ratio",
+  "source_ground_align": "none",
+  "source_height": 1.7719727754592896,
+  "source_model_type": "soma",
+  "source_name": "soma",
+  "source_to_smpl_frame": true,
+  "stored_center_ratio": 0.5,
+  "template_sort": "y_z_x",
+  "training": {
+    "edge_weight": 0.4,
+    "epochs": 100,
+    "learning_rate": 0.001,
+    "min_learning_rate": 1e-05,
+    "repulsion_weight": 0.002
+  }
+}

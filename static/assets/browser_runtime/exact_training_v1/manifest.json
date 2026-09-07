@@ -1,0 +1,331 @@
+{
+  "augmentation": {
+    "noise": {
+      "bytes": 29491200,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "augmentation_noise.float32.gz",
+      "sha256": "66a692f694c308982092790afe94765279f2af35bc43f33017c7a783793b2a58",
+      "shape": [
+        300,
+        2,
+        4096,
+        3
+      ]
+    },
+    "permutation": {
+      "bytes": 4915200,
+      "dtype": "uint16",
+      "encoding": "gzip",
+      "path": "augmentation_permutation.uint16.gz",
+      "sha256": "ea62c017cbf716a68c4370248dcb27f979bb85ed31534bca0b3bf87a21a29577",
+      "shape": [
+        300,
+        2,
+        4096
+      ]
+    },
+    "rotation_2x2": {
+      "bytes": 9600,
+      "dtype": "float32",
+      "encoding": "gzip",
+      "path": "augmentation_rotation_2x2.float32.gz",
+      "sha256": "f6ec79e5e64dd5409c070421189392d0625d527a37b5208526088254d58b9cd8",
+      "shape": [
+        300,
+        2,
+        4
+      ]
+    }
+  },
+  "dropout_ratio": 0.0,
+  "epochs": 100,
+  "format": "umr-exact-browser-training-runtime-v1",
+  "jitter_rotation": true,
+  "model": {
+    "hidden_dim": 512,
+    "latent_dim": 1024,
+    "tensors": {
+      "decoder.0.bias": {
+        "bytes": 2048,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_decoder_0_bias.float32.gz",
+        "sha256": "bb1538d3dadbefec0c0f98c2f7a9a6e0dd0cd762b89feb9c1bc8b85d89ad4d9e",
+        "shape": [
+          512
+        ]
+      },
+      "decoder.0.weight": {
+        "bytes": 2097152,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_decoder_0_weight.float32.gz",
+        "sha256": "8112fda9a397cfa3b198494b0631f394ef8437123cc753d8680f8e56b7e8e6f5",
+        "shape": [
+          512,
+          1024
+        ]
+      },
+      "decoder.2.bias": {
+        "bytes": 2048,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_decoder_2_bias.float32.gz",
+        "sha256": "5b674c013f3eb327a819e6934bcb9bca2429f510f55a74e0afacfc5ab2f26f68",
+        "shape": [
+          512
+        ]
+      },
+      "decoder.2.weight": {
+        "bytes": 1048576,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_decoder_2_weight.float32.gz",
+        "sha256": "08bee96f7e059ed3869badc2e2341dd110aabb0670889da138ce70204588d242",
+        "shape": [
+          512,
+          512
+        ]
+      },
+      "decoder.4.bias": {
+        "bytes": 49152,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_decoder_4_bias.float32.gz",
+        "sha256": "2aae7dc846aaf25f1cadf55f1666862046c6db9d65d84bdc07fa039dac405606",
+        "shape": [
+          12288
+        ]
+      },
+      "decoder.4.weight": {
+        "bytes": 25165824,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_decoder_4_weight.float32.gz",
+        "sha256": "95aeaae03b56c171cf88753c821630a3c24f1fcf406cec3e17d56781aa3f8369",
+        "shape": [
+          12288,
+          512
+        ]
+      },
+      "encoder.0.bias": {
+        "bytes": 256,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_0_bias.float32.gz",
+        "sha256": "9326c90d7bea42620d13a286d11a59890fa60af0960ca38e99abb0cbcaf84f92",
+        "shape": [
+          64
+        ]
+      },
+      "encoder.0.weight": {
+        "bytes": 768,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_0_weight.float32.gz",
+        "sha256": "1167d935b4bd71020d890ded01d3ebd9ab672f751638550ef25f433b245eabce",
+        "shape": [
+          64,
+          3,
+          1
+        ]
+      },
+      "encoder.1.bias": {
+        "bytes": 256,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_1_bias.float32.gz",
+        "sha256": "5341e6b2646979a70e57653007a1f310169421ec9bdd9f1a5648f75ade005af1",
+        "shape": [
+          64
+        ]
+      },
+      "encoder.1.running_mean": {
+        "bytes": 256,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_1_running_mean.float32.gz",
+        "sha256": "5341e6b2646979a70e57653007a1f310169421ec9bdd9f1a5648f75ade005af1",
+        "shape": [
+          64
+        ]
+      },
+      "encoder.1.running_var": {
+        "bytes": 256,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_1_running_var.float32.gz",
+        "sha256": "2f20cd03c9cd392a406c56232b0ff93a15f6d6d7da79086bfa14f55d4a4031b0",
+        "shape": [
+          64
+        ]
+      },
+      "encoder.1.weight": {
+        "bytes": 256,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_1_weight.float32.gz",
+        "sha256": "2f20cd03c9cd392a406c56232b0ff93a15f6d6d7da79086bfa14f55d4a4031b0",
+        "shape": [
+          64
+        ]
+      },
+      "encoder.3.bias": {
+        "bytes": 512,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_3_bias.float32.gz",
+        "sha256": "6a8e5e174df938f61c8d73cc541f85459db513fcbeeafdc011aa143345facb8c",
+        "shape": [
+          128
+        ]
+      },
+      "encoder.3.weight": {
+        "bytes": 32768,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_3_weight.float32.gz",
+        "sha256": "1687b5ab4e1b83cc5e00a31a6fff8f750fc2876a24efc3ddd869503db7b5d69a",
+        "shape": [
+          128,
+          64,
+          1
+        ]
+      },
+      "encoder.4.bias": {
+        "bytes": 512,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_4_bias.float32.gz",
+        "sha256": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+        "shape": [
+          128
+        ]
+      },
+      "encoder.4.running_mean": {
+        "bytes": 512,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_4_running_mean.float32.gz",
+        "sha256": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+        "shape": [
+          128
+        ]
+      },
+      "encoder.4.running_var": {
+        "bytes": 512,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_4_running_var.float32.gz",
+        "sha256": "02722f124d0f1736a9dd7c4ddcd05630dcf16ee1ce3454e9a876005ce005d4ac",
+        "shape": [
+          128
+        ]
+      },
+      "encoder.4.weight": {
+        "bytes": 512,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_4_weight.float32.gz",
+        "sha256": "02722f124d0f1736a9dd7c4ddcd05630dcf16ee1ce3454e9a876005ce005d4ac",
+        "shape": [
+          128
+        ]
+      },
+      "encoder.6.bias": {
+        "bytes": 2048,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_6_bias.float32.gz",
+        "sha256": "bbbbc85ee68d145c6fd446266550d2ed018739e181bb166e8dcaefd1ac1afe7b",
+        "shape": [
+          512
+        ]
+      },
+      "encoder.6.weight": {
+        "bytes": 262144,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_6_weight.float32.gz",
+        "sha256": "b81ff488f1b78094f056e35a5edade0fa00ac44341607c35fa415e024f00533e",
+        "shape": [
+          512,
+          128,
+          1
+        ]
+      },
+      "encoder.7.bias": {
+        "bytes": 2048,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_7_bias.float32.gz",
+        "sha256": "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad",
+        "shape": [
+          512
+        ]
+      },
+      "encoder.7.running_mean": {
+        "bytes": 2048,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_7_running_mean.float32.gz",
+        "sha256": "e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad",
+        "shape": [
+          512
+        ]
+      },
+      "encoder.7.running_var": {
+        "bytes": 2048,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_7_running_var.float32.gz",
+        "sha256": "fef951e6c76ad6a01b208af650ca6d95769bec840e009981c5ae1316a42c90b1",
+        "shape": [
+          512
+        ]
+      },
+      "encoder.7.weight": {
+        "bytes": 2048,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_7_weight.float32.gz",
+        "sha256": "fef951e6c76ad6a01b208af650ca6d95769bec840e009981c5ae1316a42c90b1",
+        "shape": [
+          512
+        ]
+      },
+      "encoder.9.bias": {
+        "bytes": 4096,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_9_bias.float32.gz",
+        "sha256": "7393a0550ead7d0792ebb04b11032acd86f8effaa4d080d431902460988243f8",
+        "shape": [
+          1024
+        ]
+      },
+      "encoder.9.weight": {
+        "bytes": 2097152,
+        "dtype": "float32",
+        "encoding": "gzip",
+        "path": "state_encoder_9_weight.float32.gz",
+        "sha256": "d1f56a55d6c0e9b7a257b1f624c46e39bbafc26cfba20677193b20e9131301ca",
+        "shape": [
+          1024,
+          512,
+          1
+        ]
+      }
+    },
+    "type": "PointNetTemplateResidualAE",
+    "zero_init_residual": true
+  },
+  "noise_std": 0.002,
+  "num_points": 4096,
+  "numpy_version": "1.26.4",
+  "samples": 2,
+  "seed": 0,
+  "source": "UMR_release/scripts/train_correspondence_template_residual_ae.py",
+  "torch_version": "2.4.1+cu121"
+}

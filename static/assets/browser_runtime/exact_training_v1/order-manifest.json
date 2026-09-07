@@ -1,0 +1,17 @@
+{
+  "epochs": 100,
+  "format": "umr-exact-browser-training-order-v1",
+  "order": {
+    "bytes": 600,
+    "dtype": "uint8",
+    "encoding": "gzip",
+    "path": "augmentation_order.uint8.gz",
+    "sha256": "6a183672c2a5666d4da381405f320cd8722ba8d734a40026e9ad5a40bcf8c81c",
+    "shape": [
+      300,
+      2
+    ]
+  },
+  "samples": 2,
+  "seed": 0
+}

@@ -1,0 +1,1136 @@
+import * as THREE from "../vendor/three/three.module.js";
+import { OrbitControls } from "../vendor/three/OrbitControls.js";
+import { RoomEnvironment } from "../vendor/three/addons/environments/RoomEnvironment.js";
+import {
+  UNIFIED_SCENE_SKY,
+  createUnifiedSceneGround
+} from "./unified-scene-style.js?v=20260824-unified-reference-background-v1";
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+export class ReferenceMotionScene {
+  constructor({ canvas, button, status, onActivate, onToggle }) {
+    this.canvas = canvas;
+    this.button = button;
+    this.status = status;
+    this.onActivate = onActivate;
+    this.onToggle = onToggle;
+    this.module = null;
+    this.model = null;
+    this.data = null;
+    this.motion = null;
+    this.bodyGroups = [];
+    this.meshes = [];
+    this.geometryCache = new Map();
+    this.skeletonGroup = null;
+    this.skeletonJoints = null;
+    this.skeletonBones = [];
+    this.skeletonJointMesh = null;
+    this.skeletonBoneMesh = null;
+    this.skeletonPositions = [];
+    this.skinnedMesh = null;
+    this.skinnedEncodedVertices = null;
+    this.skinnedRootPositions = null;
+    this.skinnedVertexCount = 0;
+    this.skinnedDecodeScale = null;
+    this.skinnedDecodeOffset = null;
+    this.interactionObjects = [];
+    this.cameraFollowRoot = null;
+    this.cameraFollowTarget = null;
+    this.cameraFollowOffset = null;
+    this.keyLightFollowPosition = null;
+    this.keyLightFollowTarget = null;
+    this.fillLightFollowStates = [];
+    this.cursor = 0;
+    this.previewPlaying = false;
+    this.previewStartedAt = 0;
+    this.previewStartFrame = 0;
+    this.scene = null;
+    this.renderer = null;
+    this.controls = null;
+    this.groundStyle = null;
+    this.needsRender = true;
+    this.bindUI();
+  }
+
+  initThree() {
+    if (this.renderer) return;
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(UNIFIED_SCENE_SKY);
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: true,
+      alpha: false
+    });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 0.94;
+    this.scene.environment = this.createEnvironmentMap();
+    if ("environmentIntensity" in this.scene) this.scene.environmentIntensity = 0.8;
+
+    this.camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100);
+    this.camera.up.set(0, 0, 1);
+    this.camera.position.set(2.4, -2.4, 1.7);
+    this.controls = new OrbitControls(this.camera, this.canvas);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.08;
+    this.controls.enableRotate = false;
+    this.controls.enablePan = false;
+    this.controls.enableZoom = false;
+    this.controls.target.set(0, 0, 0.8);
+
+    this.scene.add(new THREE.HemisphereLight(0xf7f9fb, 0x30343a, 0.38));
+    this.keyLight = new THREE.DirectionalLight(0xfff8ef, 5.25);
+    this.keyLight.position.set(-9, 13.8, 15.6);
+    this.keyLight.castShadow = true;
+    this.keyLight.shadow.mapSize.set(2048, 2048);
+    this.keyLight.shadow.bias = -0.00018;
+    this.keyLight.shadow.normalBias = 0.00045;
+    this.keyLight.shadow.radius = 1;
+    this.scene.add(this.keyLight, this.keyLight.target);
+    this.fillLights = [
+      this.createReferenceDirectionalLight(0x8bb8ff, 0.14, -12, 9, 12),
+      this.createReferenceDirectionalLight(0xffedd8, 0.44, -7.5, -10.5, 7.5),
+      this.createReferenceDirectionalLight(0xf4f8ff, 0.38, 4.5, 9.6, 10.2),
+      this.createReferenceDirectionalLight(0xffffff, 0.32, -3, 1.8, 15)
+    ];
+
+    this.groundStyle = createUnifiedSceneGround(this.scene, this.camera, this.controls);
+    this.ground = this.groundStyle.ground;
+    this.groundShadow = this.groundStyle.shadow;
+  }
+
+  createEnvironmentMap() {
+    try {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      const environment = pmrem.fromScene(new RoomEnvironment(this.renderer), 0.02).texture;
+      pmrem.dispose();
+      return environment;
+    } catch (error) {
+      console.warn("Reference Room environment could not be initialized.", error);
+      return null;
+    }
+  }
+
+  createReferenceDirectionalLight(color, intensity, x, y, z) {
+    const light = new THREE.DirectionalLight(color, intensity);
+    light.userData.viewerOffset = new THREE.Vector3(x, y, z);
+    light.position.copy(light.userData.viewerOffset);
+    this.scene.add(light, light.target);
+    return light;
+  }
+
+  updateReferenceLightRig(center) {
+    this.keyLight.target.position.copy(center);
+    this.keyLight.position.copy(center).add(new THREE.Vector3(-9, 13.8, 15.6));
+    this.keyLight.target.updateMatrixWorld();
+    for (const light of this.fillLights) {
+      light.target.position.copy(center);
+      light.position.copy(center).add(light.userData.viewerOffset);
+      light.target.updateMatrixWorld();
+    }
+  }
+
+  bindUI() {
+    this.button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.onActivate?.(this.motion);
+      if (!this.onToggle?.(this.motion)) this.togglePreview();
+    });
+  }
+
+  async initialize(module, motionId) {
+    this.module = module;
+    await this.loadMotion(motionId, { autoplay: false, notify: false });
+  }
+
+  async ensureMotion(motionId) {
+    if (this.motion?.id === motionId) return;
+    await this.loadMotion(motionId, { autoplay: false, notify: false });
+  }
+
+  async fetchBinary(spec, ArrayType, label) {
+    if (!spec || typeof spec.path !== "string") {
+      throw new Error(label + " binary metadata is missing.");
+    }
+    const response = await fetch(spec.path);
+    if (!response.ok) throw new Error("Could not load " + label + " (" + response.status + ").");
+    let buffer;
+    if (String(spec.encoding || "").startsWith("gzip")) {
+      if (typeof DecompressionStream !== "function" || !response.body) {
+        throw new Error(label + " uses gzip but this browser cannot decompress streams.");
+      }
+      buffer = await new Response(
+        response.body.pipeThrough(new DecompressionStream("gzip"))
+      ).arrayBuffer();
+    } else {
+      buffer = await response.arrayBuffer();
+    }
+    if (buffer.byteLength % ArrayType.BYTES_PER_ELEMENT !== 0) {
+      throw new Error(label + " binary byte length is invalid.");
+    }
+    const values = new ArrayType(buffer);
+    if (spec.encoding === "gzip-spatial-temporal-delta-i16") {
+      if (ArrayType !== Int16Array || !Array.isArray(spec.shape) || spec.shape.length !== 3) {
+        throw new Error(label + " delta encoding metadata is invalid.");
+      }
+      const frameCount = Number(spec.shape[0]);
+      const wordsPerFrame = Number(spec.shape[1]) * Number(spec.shape[2]);
+      if (frameCount * wordsPerFrame !== values.length) {
+        throw new Error(label + " delta encoding shape does not match its binary.");
+      }
+      const words = new Uint16Array(values.buffer, values.byteOffset, values.length);
+      for (let frame = 0; frame < frameCount; frame += 1) {
+        const offset = frame * wordsPerFrame;
+        const previousOffset = offset - wordsPerFrame;
+        for (let index = 0; index < wordsPerFrame; index += 1) {
+          let spatialDelta = words[offset + index];
+          if (frame > 0) {
+            const previousSpatial = (
+              words[previousOffset + index] -
+              (index > 0 ? words[previousOffset + index - 1] : 0)
+            ) & 0xffff;
+            spatialDelta = (spatialDelta + previousSpatial) & 0xffff;
+          }
+          words[offset + index] = (
+            spatialDelta + (index > 0 ? words[offset + index - 1] : 0)
+          ) & 0xffff;
+        }
+      }
+    }
+    return values;
+  }
+
+  async loadMotion(motionId, { autoplay = false, notify = true } = {}) {
+    this.stopPreview();
+    this.button.disabled = true;
+    this.setStatus("Loading target motion...");
+    const response = await fetch("/api/motions/" + encodeURIComponent(motionId), {
+      cache: "no-store"
+    });
+    const motion = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(motion.error || "Could not load target motion.");
+
+    const isMjcfMotion =
+      motion.format === "umr-reference-motion-v1" &&
+      Array.isArray(motion.qpos) &&
+      motion.qpos.length &&
+      typeof motion.model_xml === "string";
+    const isSkeletonMotion =
+      motion.format === "umr-reference-skeleton-motion-v1" &&
+      Array.isArray(motion.joint_positions) &&
+      motion.joint_positions.length &&
+      Array.isArray(motion.joint_names) &&
+      Array.isArray(motion.parents) &&
+      motion.joint_names.length === motion.parents.length;
+    const isSkinnedMotion =
+      motion.format === "umr-reference-skinned-motion-v1" &&
+      motion.mesh?.vertices?.dtype === "int16" &&
+      motion.mesh?.indices?.dtype === "uint16" &&
+      motion.root_positions?.dtype === "float32";
+    if (!isMjcfMotion && !isSkeletonMotion && !isSkinnedMotion) {
+      throw new Error("Target motion preview payload is invalid.");
+    }
+
+    let skinnedData = null;
+    if (isSkinnedMotion) {
+      this.setStatus("Loading pre-skinned reference surface...");
+      const [vertices, indices, roots, objects] = await Promise.all([
+        this.fetchBinary(motion.mesh.vertices, Int16Array, "reference vertices"),
+        this.fetchBinary(motion.mesh.indices, Uint16Array, "reference indices"),
+        this.fetchBinary(motion.root_positions, Float32Array, "reference root trajectory"),
+        Promise.all((motion.objects || []).map(async (object, objectId) => ({
+          spec: object,
+          vertices: await this.fetchBinary(object.vertices, Float32Array, `object ${objectId + 1} vertices`),
+          indices: await this.fetchBinary(object.indices, Uint16Array, `object ${objectId + 1} indices`),
+          positions: await this.fetchBinary(object.positions, Float32Array, `object ${objectId + 1} positions`),
+          quaternions: await this.fetchBinary(object.quaternions_wxyz, Float32Array, `object ${objectId + 1} rotations`)
+        })))
+      ]);
+      skinnedData = { vertices, indices, roots, objects };
+    }
+
+    if (!this.renderer) this.initThree();
+    this.disposeModel();
+    this.motion = motion;
+    if (isMjcfMotion) {
+      this.model = this.module.MjModel.from_xml_string(motion.model_xml);
+      if (!this.model) throw new Error("Target motion MJCF could not be compiled.");
+      this.data = new this.module.MjData(this.model);
+      if (Number(motion.nq) !== this.model.nq) {
+        throw new Error("Target motion qpos width does not match its MJCF.");
+      }
+      this.buildVisuals();
+    } else if (isSkinnedMotion) {
+      this.buildSkinnedVisuals(skinnedData);
+    } else {
+      this.buildSkeletonVisuals();
+    }
+
+    this.setFrame(0);
+    this.updateGround();
+    this.fitCamera();
+    this.initializeCameraFollow();
+    this.button.disabled = false;
+    this.setStatus(
+      (motion.display_name || motion.id) + " · " + motion.frames + " frames · " +
+      Number(motion.fps).toFixed(1) + " fps"
+    );
+    if (notify) this.onActivate?.(motion);
+    if (autoplay) this.startPreview();
+  }
+
+  setStatus(message, error = false) {
+    this.status.textContent = message;
+    this.status.dataset.state = error ? "error" : "ready";
+  }
+
+  togglePreview() {
+    if (!this.motion) return;
+    if (this.previewPlaying) this.stopPreview();
+    else this.startPreview();
+  }
+
+  startPreview() {
+    if (!this.motion) return;
+    if (this.cursor >= this.motion.frames - 1) this.setFrame(0);
+    this.previewPlaying = true;
+    this.previewStartFrame = this.cursor;
+    this.previewStartedAt = performance.now();
+    this.setButtonIcon(true);
+  }
+
+  stopPreview() {
+    this.previewPlaying = false;
+    this.setButtonIcon(false);
+  }
+
+  setButtonIcon(playing) {
+    const icon = this.button.querySelector(".mj-motion-play-symbol");
+    if (icon) icon.textContent = playing ? "Ⅱ" : "▶";
+    this.button.classList.toggle("is-playing", playing);
+    this.button.setAttribute("aria-label", playing ? "Pause target motion" : "Play target motion");
+  }
+
+  setFrame(index) {
+    if (!this.motion) return;
+    const frame = clamp(Math.trunc(index), 0, this.motion.frames - 1);
+    if (this.motion.format === "umr-reference-skinned-motion-v1") {
+      this.updateSkinnedFrame(frame);
+    } else if (this.motion.format === "umr-reference-skeleton-motion-v1") {
+      this.updateSkeletonFrame(frame);
+    } else {
+      if (!this.model || !this.data) return;
+      const qpos = this.motion.qpos[frame];
+      this.data.qpos.set(this.model.qpos0);
+      for (let address = 0; address < Math.min(qpos.length, this.model.nq); address += 1) {
+        this.data.qpos[address] = Number(qpos[address]);
+      }
+      this.module.mj_forward(this.model, this.data);
+      this.syncScene();
+    }
+    this.updateInteractionObjects(frame);
+    this.cursor = frame;
+    this.updateCameraFollow(frame);
+    this.needsRender = true;
+  }
+
+  setSourceFrame(sourceFrame) {
+    if (!this.motion) return;
+    const frameIds = this.motion.frame_ids;
+    if (!Array.isArray(frameIds) || frameIds.length !== this.motion.frames) {
+      this.setFrame(sourceFrame);
+      return;
+    }
+    const target = Number(sourceFrame);
+    if (!Number.isFinite(target)) return;
+    let low = 0;
+    let high = frameIds.length - 1;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (Number(frameIds[middle]) < target) low = middle + 1;
+      else high = middle;
+    }
+    let nearest = low;
+    if (
+      low > 0 &&
+      Math.abs(Number(frameIds[low - 1]) - target) <= Math.abs(Number(frameIds[low]) - target)
+    ) nearest = low - 1;
+    this.setFrame(nearest);
+  }
+
+  update(timestamp) {
+    if (!this.renderer) return;
+    if (this.previewPlaying && this.motion) {
+      const elapsed = Math.floor(
+        ((timestamp - this.previewStartedAt) / 1000) * Number(this.motion.fps)
+      );
+      const frame = (this.previewStartFrame + elapsed) % this.motion.frames;
+      if (frame !== this.cursor) this.setFrame(frame);
+    }
+    if (this.controls.update()) this.needsRender = true;
+    this.groundStyle.update();
+  }
+
+  render() {
+    if (!this.renderer || (!this.needsRender && !this.previewPlaying)) return;
+    this.renderer.render(this.scene, this.camera);
+    this.needsRender = false;
+  }
+
+  resize() {
+    if (!this.renderer) return;
+    const width = Math.max(this.canvas.clientWidth, 1);
+    const height = Math.max(this.canvas.clientHeight, 1);
+    this.renderer.setSize(width, height, false);
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+    this.needsRender = true;
+  }
+
+  geometryFor(geomId) {
+    const type = this.model.geom_type[geomId];
+    const dataId = this.model.geom_dataid[geomId];
+    const size = [
+      this.model.geom_size[geomId * 3],
+      this.model.geom_size[geomId * 3 + 1],
+      this.model.geom_size[geomId * 3 + 2]
+    ];
+    const key = JSON.stringify([type, size, dataId]);
+    if (this.geometryCache.has(key)) return this.geometryCache.get(key);
+    const types = this.module.mjtGeom;
+    let geometry;
+    if (type === types.mjGEOM_PLANE.value) {
+      geometry = new THREE.PlaneGeometry(2 * (size[0] || 4), 2 * (size[1] || 4));
+    } else if (type === types.mjGEOM_SPHERE.value) {
+      geometry = new THREE.SphereGeometry(size[0], 24, 16);
+    } else if (type === types.mjGEOM_CAPSULE.value) {
+      geometry = new THREE.CapsuleGeometry(size[0], 2 * size[1], 8, 16);
+      geometry.rotateX(Math.PI / 2);
+    } else if (type === types.mjGEOM_ELLIPSOID.value) {
+      geometry = new THREE.SphereGeometry(1, 24, 16);
+      geometry.scale(size[0], size[1], size[2]);
+    } else if (type === types.mjGEOM_CYLINDER.value) {
+      geometry = new THREE.CylinderGeometry(size[0], size[0], 2 * size[1], 24);
+      geometry.rotateX(Math.PI / 2);
+    } else if (type === types.mjGEOM_BOX.value) {
+      geometry = new THREE.BoxGeometry(2 * size[0], 2 * size[1], 2 * size[2]);
+    } else if (type === types.mjGEOM_MESH.value && dataId >= 0) {
+      geometry = this.meshGeometry(dataId);
+    } else {
+      geometry = new THREE.SphereGeometry(Math.max(size[0] || 0.015, 0.015), 12, 8);
+    }
+    this.geometryCache.set(key, geometry);
+    return geometry;
+  }
+
+  meshGeometry(meshId) {
+    const vertexStart = this.model.mesh_vertadr[meshId];
+    const vertexCount = this.model.mesh_vertnum[meshId];
+    const faceStart = this.model.mesh_faceadr[meshId];
+    const faceCount = this.model.mesh_facenum[meshId];
+    const positions = new Float32Array(vertexCount * 3);
+    positions.set(this.model.mesh_vert.subarray(vertexStart * 3, (vertexStart + vertexCount) * 3));
+    const IndexArray = vertexCount > 65535 ? Uint32Array : Uint16Array;
+    const indices = new IndexArray(faceCount * 3);
+    indices.set(this.model.mesh_face.subarray(faceStart * 3, (faceStart + faceCount) * 3));
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    return geometry;
+  }
+
+  geomColor(geomId) {
+    const materialId = this.model.geom_matid[geomId];
+    const rgba = materialId >= 0 ? this.model.mat_rgba : this.model.geom_rgba;
+    const offset = (materialId >= 0 ? materialId : geomId) * 4;
+    return [rgba[offset], rgba[offset + 1], rgba[offset + 2], rgba[offset + 3]];
+  }
+
+  buildSkinnedVisuals({ vertices, indices, roots, objects = [] }) {
+    const vertexShape = this.motion.mesh.vertices.shape;
+    const rootShape = this.motion.root_positions.shape;
+    const frameCount = Number(this.motion.frames);
+    const vertexCount = Number(vertexShape?.[1]);
+    const expectedVertices = frameCount * vertexCount * 3;
+    if (
+      !Array.isArray(vertexShape) ||
+      vertexShape.length !== 3 ||
+      Number(vertexShape[0]) !== frameCount ||
+      Number(vertexShape[2]) !== 3 ||
+      vertices.length !== expectedVertices
+    ) {
+      throw new Error("Pre-skinned SOMA vertex shape does not match its binary.");
+    }
+    if (
+      !Array.isArray(rootShape) ||
+      Number(rootShape[0]) !== frameCount ||
+      Number(rootShape[1]) !== 3 ||
+      roots.length !== frameCount * 3
+    ) {
+      throw new Error("Pre-skinned SOMA root trajectory shape is invalid.");
+    }
+    if (indices.length !== Number(this.motion.mesh.indices.count)) {
+      throw new Error("Pre-skinned SOMA index count does not match its binary.");
+    }
+
+    this.skinnedEncodedVertices = vertices;
+    this.skinnedRootPositions = roots;
+    this.skinnedVertexCount = vertexCount;
+    this.skinnedDecodeScale = this.motion.mesh.vertices.decode_scale.map(Number);
+    this.skinnedDecodeOffset = this.motion.mesh.vertices.decode_offset.map(Number);
+    if (this.skinnedDecodeScale.length !== 3 || this.skinnedDecodeOffset.length !== 3) {
+      throw new Error("Pre-skinned SOMA quantization metadata is invalid.");
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(vertexCount * 3);
+    const positionAttribute = new THREE.BufferAttribute(positions, 3);
+    positionAttribute.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute("position", positionAttribute);
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    const color = this.motion.mesh.color || [0.64, 0.56, 0.92];
+    const alpha = Number(this.motion.mesh.alpha ?? 1);
+    const material = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(Number(color[0]), Number(color[1]), Number(color[2])),
+      opacity: alpha,
+      transparent: alpha < 0.999,
+      roughness: 0.58,
+      metalness: 0.02,
+      clearcoat: 0.12,
+      clearcoatRoughness: 0.72,
+      side: THREE.FrontSide
+    });
+    this.skinnedMesh = new THREE.Mesh(geometry, material);
+    this.skinnedMesh.castShadow = true;
+    this.skinnedMesh.receiveShadow = true;
+    this.skinnedMesh.frustumCulled = false;
+    this.scene.add(this.skinnedMesh);
+    this.buildInteractionObjects(objects);
+  }
+
+  buildInteractionObjects(objects) {
+    for (const data of objects) {
+      const { spec, vertices, indices, positions, quaternions } = data;
+      const vertexCount = Number(spec.vertices?.shape?.[0]);
+      const frameCount = Number(this.motion.frames);
+      if (
+        !Number.isInteger(vertexCount) || vertexCount <= 0 ||
+        vertices.length !== vertexCount * 3 ||
+        indices.length !== Number(spec.indices?.count) ||
+        positions.length !== frameCount * 3 ||
+        quaternions.length !== frameCount * 4
+      ) {
+        throw new Error(`Interaction object ${spec.name || "mesh"} binary shape is invalid.`);
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+      geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+      geometry.computeVertexNormals();
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+      const color = spec.color || [0.75, 0.72, 0.66];
+      const alpha = Number(spec.alpha ?? 1);
+      const material = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(Number(color[0]), Number(color[1]), Number(color[2])),
+        opacity: alpha,
+        transparent: alpha < 0.999,
+        roughness: 0.48,
+        metalness: 0.04,
+        clearcoat: 0.18,
+        clearcoatRoughness: 0.55,
+        side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = String(spec.name || "interaction_object");
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      this.scene.add(mesh);
+      this.interactionObjects.push({ mesh, positions, quaternions });
+    }
+  }
+
+  updateInteractionObjects(frame) {
+    for (const object of this.interactionObjects) {
+      const positionOffset = frame * 3;
+      const quaternionOffset = frame * 4;
+      object.mesh.position.fromArray(object.positions, positionOffset);
+      object.mesh.quaternion.set(
+        object.quaternions[quaternionOffset + 1],
+        object.quaternions[quaternionOffset + 2],
+        object.quaternions[quaternionOffset + 3],
+        object.quaternions[quaternionOffset]
+      ).normalize();
+    }
+  }
+
+  updateSkinnedFrame(frame) {
+    if (!this.skinnedMesh || !this.skinnedEncodedVertices) return;
+    const positions = this.skinnedMesh.geometry.attributes.position.array;
+    const start = frame * this.skinnedVertexCount * 3;
+    for (let index = 0; index < positions.length; index += 3) {
+      positions[index] =
+        this.skinnedEncodedVertices[start + index] * this.skinnedDecodeScale[0] +
+        this.skinnedDecodeOffset[0];
+      positions[index + 1] =
+        this.skinnedEncodedVertices[start + index + 1] * this.skinnedDecodeScale[1] +
+        this.skinnedDecodeOffset[1];
+      positions[index + 2] =
+        this.skinnedEncodedVertices[start + index + 2] * this.skinnedDecodeScale[2] +
+        this.skinnedDecodeOffset[2];
+    }
+    const geometry = this.skinnedMesh.geometry;
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+  }
+
+  buildSkeletonVisuals() {
+    const hiddenJoint = /(?:Eye|Jaw|End$|Hand(?:Thumb|Index|Middle|Ring|Pinky))/;
+    const visibleIds = [];
+    this.motion.joint_names.forEach((name, index) => {
+      if (!hiddenJoint.test(String(name))) visibleIds.push(index);
+    });
+    const visibleSet = new Set(visibleIds);
+    this.skeletonJoints = visibleIds;
+    this.skeletonBones = [];
+    for (const child of visibleIds) {
+      let parent = Number(this.motion.parents[child]);
+      while (parent >= 0 && !visibleSet.has(parent)) {
+        parent = Number(this.motion.parents[parent]);
+      }
+      if (parent >= 0 && parent !== child) this.skeletonBones.push([parent, child]);
+    }
+
+    this.skeletonGroup = new THREE.Group();
+    this.scene.add(this.skeletonGroup);
+    const jointGeometry = new THREE.SphereGeometry(0.026, 16, 10);
+    const jointMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd9f3ff,
+      emissive: 0x163848,
+      emissiveIntensity: 0.35,
+      roughness: 0.42,
+      metalness: 0.06
+    });
+    this.skeletonJointMesh = new THREE.InstancedMesh(
+      jointGeometry,
+      jointMaterial,
+      visibleIds.length
+    );
+    this.skeletonJointMesh.castShadow = true;
+    this.skeletonJointMesh.receiveShadow = true;
+    this.skeletonGroup.add(this.skeletonJointMesh);
+
+    const boneGeometry = new THREE.CylinderGeometry(0.014, 0.019, 1, 10);
+    const boneMaterial = new THREE.MeshStandardMaterial({
+      color: 0x9f8cff,
+      emissive: 0x211a54,
+      emissiveIntensity: 0.28,
+      roughness: 0.48,
+      metalness: 0.08
+    });
+    this.skeletonBoneMesh = new THREE.InstancedMesh(
+      boneGeometry,
+      boneMaterial,
+      this.skeletonBones.length
+    );
+    this.skeletonBoneMesh.castShadow = true;
+    this.skeletonBoneMesh.receiveShadow = true;
+    this.skeletonGroup.add(this.skeletonBoneMesh);
+  }
+
+  updateSkeletonFrame(frame) {
+    if (!this.skeletonJointMesh || !this.skeletonBoneMesh) return;
+    const rawPositions = this.motion.joint_positions[frame];
+    if (!Array.isArray(rawPositions) || rawPositions.length !== this.motion.joint_names.length) {
+      return;
+    }
+    this.skeletonPositions = rawPositions.map(
+      (point) => new THREE.Vector3(Number(point[0]), Number(point[1]), Number(point[2]))
+    );
+    const transform = new THREE.Object3D();
+    this.skeletonJoints.forEach((jointId, instanceId) => {
+      transform.position.copy(this.skeletonPositions[jointId]);
+      transform.quaternion.identity();
+      transform.scale.setScalar(1);
+      transform.updateMatrix();
+      this.skeletonJointMesh.setMatrixAt(instanceId, transform.matrix);
+    });
+    this.skeletonJointMesh.instanceMatrix.needsUpdate = true;
+
+    const midpoint = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const yAxis = new THREE.Vector3(0, 1, 0);
+    this.skeletonBones.forEach(([parentId, childId], instanceId) => {
+      const parent = this.skeletonPositions[parentId];
+      const child = this.skeletonPositions[childId];
+      direction.subVectors(child, parent);
+      const length = Math.max(direction.length(), 0.001);
+      midpoint.addVectors(parent, child).multiplyScalar(0.5);
+      transform.position.copy(midpoint);
+      transform.quaternion.setFromUnitVectors(yAxis, direction.normalize());
+      transform.scale.set(1, length, 1);
+      transform.updateMatrix();
+      this.skeletonBoneMesh.setMatrixAt(instanceId, transform.matrix);
+    });
+    this.skeletonBoneMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  buildVisuals() {
+    const types = this.module.mjtGeom;
+    for (let bodyId = 0; bodyId < this.model.nbody; bodyId += 1) {
+      const body = new THREE.Group();
+      this.bodyGroups[bodyId] = body;
+      this.scene.add(body);
+    }
+    for (let geomId = 0; geomId < this.model.ngeom; geomId += 1) {
+      if (this.model.geom_group[geomId] >= 3) continue;
+      const type = this.model.geom_type[geomId];
+      if (type === types.mjGEOM_PLANE.value) continue;
+      const rgba = this.geomColor(geomId);
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(rgba[0], rgba[1], rgba[2]),
+        opacity: rgba[3],
+        transparent: rgba[3] < 0.999,
+        roughness: 0.68,
+        metalness: 0.03
+      });
+      const mesh = new THREE.Mesh(this.geometryFor(geomId), material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.fromArray(this.model.geom_pos, geomId * 3);
+      mesh.quaternion.set(
+        this.model.geom_quat[geomId * 4 + 1],
+        this.model.geom_quat[geomId * 4 + 2],
+        this.model.geom_quat[geomId * 4 + 3],
+        this.model.geom_quat[geomId * 4]
+      );
+      this.meshes.push(mesh);
+      this.bodyGroups[this.model.geom_bodyid[geomId]].add(mesh);
+    }
+  }
+
+  syncScene() {
+    for (let bodyId = 0; bodyId < this.bodyGroups.length; bodyId += 1) {
+      this.bodyGroups[bodyId].position.fromArray(this.data.xpos, bodyId * 3);
+      this.bodyGroups[bodyId].quaternion.set(
+        this.data.xquat[bodyId * 4 + 1],
+        this.data.xquat[bodyId * 4 + 2],
+        this.data.xquat[bodyId * 4 + 3],
+        this.data.xquat[bodyId * 4]
+      );
+    }
+  }
+
+  bounds() {
+    if (this.skinnedMesh?.geometry.boundingBox) {
+      this.scene.updateMatrixWorld(true);
+      const bounds = this.skinnedMesh.geometry.boundingBox.clone().applyMatrix4(this.skinnedMesh.matrixWorld);
+      for (const object of this.interactionObjects) {
+        if (!object.mesh.geometry.boundingBox) object.mesh.geometry.computeBoundingBox();
+        bounds.union(object.mesh.geometry.boundingBox.clone().applyMatrix4(object.mesh.matrixWorld));
+      }
+      return bounds;
+    }
+    if (this.skeletonPositions.length) {
+      return new THREE.Box3().setFromPoints(this.skeletonPositions);
+    }
+    this.scene.updateMatrixWorld(true);
+    const bounds = new THREE.Box3();
+    const item = new THREE.Box3();
+    for (const mesh of this.meshes) {
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      item.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
+      bounds.union(item);
+    }
+    return bounds.isEmpty() ? null : bounds;
+  }
+
+  updateGround() {
+    const bounds = this.bounds();
+    if (!bounds || !this.motion) return;
+    const center = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
+    const modelSize = Math.max(size.x, size.y, size.z, 0.1);
+    const groundSize = Math.max(modelSize * 12, 8);
+    const groundZ = Number(this.motion.ground_height) || 0;
+    this.ground.position.set(center.x, center.y, groundZ);
+    this.ground.scale.set(groundSize, groundSize, 1);
+    this.ground.visible = true;
+    this.groundShadow.position.set(center.x, center.y, groundZ + modelSize * 0.0005);
+    this.groundShadow.scale.set(groundSize, groundSize, 1);
+    this.groundShadow.visible = true;
+    this.updateReferenceLightRig(center);
+    const shadowExtent = Math.max(modelSize * 1.4, 1);
+    const shadowCamera = this.keyLight.shadow.camera;
+    shadowCamera.left = shadowCamera.bottom = -shadowExtent;
+    shadowCamera.right = shadowCamera.top = shadowExtent;
+    shadowCamera.near = 0.01;
+    shadowCamera.far = Math.max(modelSize * 10, 55);
+    shadowCamera.updateProjectionMatrix();
+  }
+
+  fitCamera() {
+    const bounds = this.bounds();
+    if (!bounds) return;
+    const center = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
+    const modelSize = Math.max(size.x, size.y, size.z, 0.1);
+    const fov = THREE.MathUtils.degToRad(this.camera.fov);
+    const distance = modelSize / (2 * Math.tan(fov / 2)) * 1.9;
+    const offset = new THREE.Vector3(distance * 0.58, -distance * 0.58, distance * 0.42);
+    this.controls.target.copy(center);
+    this.camera.position.copy(center).add(offset);
+    this.camera.near = Math.max(modelSize / 1000, 0.001);
+    this.camera.far = Math.max(modelSize * 100, 20);
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
+  }
+
+  characterAnchor(frame = this.cursor) {
+    if (this.skinnedRootPositions) {
+      const offset = clamp(Math.trunc(frame), 0, this.motion.frames - 1) * 3;
+      return new THREE.Vector3(
+        this.skinnedRootPositions[offset],
+        this.skinnedRootPositions[offset + 1],
+        this.skinnedRootPositions[offset + 2]
+      );
+    }
+    if (this.motion?.qpos?.[frame]?.length >= 3) {
+      return new THREE.Vector3(
+        Number(this.motion.qpos[frame][0]),
+        Number(this.motion.qpos[frame][1]),
+        Number(this.motion.qpos[frame][2])
+      );
+    }
+    if (this.skeletonPositions.length) return this.skeletonPositions[0].clone();
+    return this.bounds()?.getCenter(new THREE.Vector3()) || new THREE.Vector3();
+  }
+
+  initializeCameraFollow() {
+    this.cameraFollowRoot = this.characterAnchor(0);
+    this.cameraFollowTarget = this.controls.target.clone();
+    this.cameraFollowOffset = this.camera.position.clone().sub(this.controls.target);
+    this.keyLightFollowPosition = this.keyLight.position.clone();
+    this.keyLightFollowTarget = this.keyLight.target.position.clone();
+    this.fillLightFollowStates = this.fillLights.map((light) => ({
+      light,
+      position: light.position.clone(),
+      target: light.target.position.clone()
+    }));
+  }
+
+  updateCameraFollow(frame) {
+    if (!this.cameraFollowRoot || !this.cameraFollowTarget || !this.cameraFollowOffset) return;
+    const current = this.characterAnchor(frame);
+    const delta = current.sub(this.cameraFollowRoot);
+    delta.z = 0;
+    const target = this.cameraFollowTarget.clone().add(delta);
+    this.controls.target.copy(target);
+    this.camera.position.copy(target).add(this.cameraFollowOffset);
+    this.camera.lookAt(target);
+    if (this.keyLightFollowPosition && this.keyLightFollowTarget) {
+      this.keyLight.position.copy(this.keyLightFollowPosition).add(delta);
+      this.keyLight.target.position.copy(this.keyLightFollowTarget).add(delta);
+      this.keyLight.target.updateMatrixWorld();
+    }
+    for (const state of this.fillLightFollowStates) {
+      state.light.position.copy(state.position).add(delta);
+      state.light.target.position.copy(state.target).add(delta);
+      state.light.target.updateMatrixWorld();
+    }
+  }
+
+  disposeModel() {
+    this.bodyGroups.forEach((body) => this.scene.remove(body));
+    this.meshes.forEach((mesh) => mesh.material.dispose());
+    this.geometryCache.forEach((geometry) => geometry.dispose());
+    this.bodyGroups.length = 0;
+    this.meshes.length = 0;
+    this.geometryCache.clear();
+    if (this.skeletonGroup) this.scene.remove(this.skeletonGroup);
+    this.skeletonJointMesh?.geometry.dispose();
+    this.skeletonJointMesh?.material.dispose();
+    this.skeletonBoneMesh?.geometry.dispose();
+    this.skeletonBoneMesh?.material.dispose();
+    this.skeletonGroup = null;
+    this.skeletonJoints = null;
+    this.skeletonBones = [];
+    this.skeletonJointMesh = null;
+    this.skeletonBoneMesh = null;
+    this.skeletonPositions = [];
+    if (this.skinnedMesh) this.scene.remove(this.skinnedMesh);
+    this.skinnedMesh?.geometry.dispose();
+    this.skinnedMesh?.material.dispose();
+    this.skinnedMesh = null;
+    this.skinnedEncodedVertices = null;
+    this.skinnedRootPositions = null;
+    this.skinnedVertexCount = 0;
+    this.skinnedDecodeScale = null;
+    this.skinnedDecodeOffset = null;
+    this.interactionObjects.forEach(({ mesh }) => {
+      this.scene.remove(mesh);
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    });
+    this.interactionObjects = [];
+    this.cameraFollowRoot = null;
+    this.cameraFollowTarget = null;
+    this.cameraFollowOffset = null;
+    this.keyLightFollowPosition = null;
+    this.keyLightFollowTarget = null;
+    this.fillLightFollowStates = [];
+    this.data?.delete();
+    this.model?.delete();
+    this.data = null;
+    this.model = null;
+  }
+
+  dispose() {
+    this.stopPreview();
+    if (!this.renderer) return;
+    this.disposeModel();
+    this.groundStyle.dispose();
+    this.scene.environment?.dispose();
+    this.controls.dispose();
+    this.renderer.dispose();
+  }
+}
+export class ReferenceMotionLibrary {
+  constructor({ container, selectionInput, onMotionChange }) {
+    this.container = container;
+    this.selectionInput = selectionInput;
+    this.onMotionChange = onMotionChange;
+    this.module = null;
+    this.entries = new Map();
+    this.activeId = "";
+    this.locked = false;
+    this.synchronizedPlaybackToggle = null;
+  }
+
+  get motion() {
+    return this.entries.get(this.activeId)?.scene.motion || null;
+  }
+
+  async initialize(module, preferredId = "") {
+    this.module = module;
+    const response = await fetch("/api/motions", { cache: "no-store" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !Array.isArray(payload.motions) || !payload.motions.length) {
+      throw new Error(payload.error || "No target motions are available.");
+    }
+
+    this.container.replaceChildren();
+    this.selectionInput.replaceChildren();
+    payload.motions.forEach((motion) => this.createEntry(motion));
+    const selected = this.entries.has(preferredId) ? preferredId : payload.motions[0].id;
+    this.activate(selected, { notify: false });
+    const selectedLoad = this.loadEntry(selected);
+    this.loadRemaining(selected);
+    await selectedLoad;
+  }
+
+  createEntry(metadata) {
+    const motionId = String(metadata.id);
+    const option = document.createElement("option");
+    option.value = motionId;
+    option.textContent = metadata.display_name || metadata.label || motionId;
+    this.selectionInput.append(option);
+
+    const card = document.createElement("article");
+    card.className = "mj-motion-card";
+    card.dataset.motionId = motionId;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", "Select " + option.textContent);
+
+    const title = document.createElement("strong");
+    title.className = "mj-motion-card-title";
+    title.textContent = option.textContent;
+
+    const viewport = document.createElement("div");
+    viewport.className = "mj-scene-pane mj-reference-scene";
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("aria-label", option.textContent + " preview");
+    const playButton = document.createElement("button");
+    playButton.className = "mj-motion-card-play";
+    playButton.type = "button";
+    playButton.disabled = true;
+    playButton.setAttribute("aria-label", "Play target motion");
+    const icon = document.createElement("span");
+    icon.className = "mj-motion-play-symbol";
+    icon.textContent = "▶";
+    icon.setAttribute("aria-hidden", "true");
+    playButton.append(icon);
+    viewport.append(canvas, playButton);
+
+    const status = document.createElement("small");
+    status.className = "mj-motion-card-status";
+    status.textContent = "Loading preview…";
+    card.append(title, viewport, status);
+    this.container.append(card);
+
+    const scene = new ReferenceMotionScene({
+      canvas,
+      button: playButton,
+      status,
+      onActivate: () => this.activate(motionId, { notify: true }),
+      onToggle: () => this.handleSceneToggle(motionId)
+    });
+    const entry = { metadata, card, scene, loadPromise: null };
+    this.entries.set(motionId, entry);
+
+    card.addEventListener("pointerdown", (event) => {
+      if (event.target.closest(".mj-motion-card-play")) return;
+      this.activate(motionId, { notify: true });
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      this.activate(motionId, { notify: true });
+    });
+  }
+
+  async loadEntry(motionId) {
+    const entry = this.entries.get(String(motionId));
+    if (!entry) throw new Error("Unknown target motion: " + motionId);
+    if (entry.scene.motion) return entry.scene.motion;
+    if (!entry.loadPromise) {
+      entry.loadPromise = entry.scene.initialize(this.module, String(motionId))
+        .then(() => {
+          entry.scene.resize();
+          entry.scene.button.disabled = this.locked;
+          return entry.scene.motion;
+        })
+        .catch((error) => {
+          entry.loadPromise = null;
+          entry.scene.setStatus(error instanceof Error ? error.message : String(error), true);
+          entry.card.classList.add("has-error");
+          throw error;
+        });
+    }
+    return entry.loadPromise;
+  }
+
+  loadRemaining(selectedId) {
+    const loads = [];
+    for (const [motionId] of this.entries) {
+      if (motionId === selectedId) continue;
+      loads.push(
+        this.loadEntry(motionId).catch((error) => {
+          console.warn("Could not prepare target motion preview.", motionId, error);
+        })
+      );
+    }
+    return Promise.allSettled(loads);
+  }
+
+  activate(motionId, { notify = true } = {}) {
+    if (this.locked && notify) return;
+    const id = String(motionId);
+    const entry = this.entries.get(id);
+    if (!entry) return;
+    const changed = this.activeId !== id;
+    this.activeId = id;
+    this.selectionInput.value = id;
+    for (const [otherId, other] of this.entries) {
+      other.card.classList.toggle("is-active", otherId === id);
+      other.card.setAttribute("aria-pressed", otherId === id ? "true" : "false");
+      if (otherId !== id) other.scene.stopPreview();
+    }
+    if (notify && changed) {
+      if (entry.scene.motion) {
+        this.onMotionChange?.(entry.scene.motion);
+      } else {
+        this.loadEntry(id).then((motion) => {
+          if (this.activeId === id) this.onMotionChange?.(motion);
+        }).catch(() => {});
+      }
+    }
+  }
+
+  async ensureMotion(motionId) {
+    const id = String(motionId);
+    await this.loadEntry(id);
+    this.activate(id, { notify: false });
+  }
+
+  stopPreview() {
+    this.entries.forEach((entry) => entry.scene.stopPreview());
+  }
+
+  handleSceneToggle(motionId) {
+    if (!this.synchronizedPlaybackToggle || String(motionId) !== this.activeId) return false;
+    this.synchronizedPlaybackToggle();
+    return true;
+  }
+
+  setSynchronizedPlayback(toggleHandler) {
+    this.stopPreview();
+    this.synchronizedPlaybackToggle = typeof toggleHandler === "function" ? toggleHandler : null;
+    this.container.classList.toggle("is-synchronized", Boolean(this.synchronizedPlaybackToggle));
+    this.setSynchronizedPlaying(false);
+  }
+
+  setSynchronizedPlaying(playing) {
+    if (!this.synchronizedPlaybackToggle) return;
+    this.entries.get(this.activeId)?.scene.setButtonIcon(Boolean(playing));
+  }
+
+  clearSynchronizedPlayback() {
+    if (!this.synchronizedPlaybackToggle) return;
+    this.entries.get(this.activeId)?.scene.setButtonIcon(false);
+    this.synchronizedPlaybackToggle = null;
+    this.container.classList.remove("is-synchronized");
+  }
+
+  setLocked(locked) {
+    this.locked = Boolean(locked);
+    this.container.classList.toggle("is-locked", this.locked);
+    this.entries.forEach((entry) => {
+      entry.scene.button.disabled = this.locked || !entry.scene.motion;
+      entry.card.tabIndex = this.locked ? -1 : 0;
+    });
+  }
+
+  setFrame(frame) {
+    this.entries.get(this.activeId)?.scene.setSourceFrame(frame);
+  }
+
+  setStatus(message, error = false) {
+    const active = this.entries.get(this.activeId);
+    if (active) active.scene.setStatus(message, error);
+    else {
+      this.container.replaceChildren();
+      const item = document.createElement("div");
+      item.className = "mj-motion-library-empty";
+      item.textContent = message;
+      item.dataset.state = error ? "error" : "ready";
+      this.container.append(item);
+    }
+  }
+
+  update(timestamp) {
+    this.entries.forEach((entry) => entry.scene.update(timestamp));
+  }
+
+  render() {
+    this.entries.forEach((entry) => entry.scene.render());
+  }
+
+  resize() {
+    this.entries.forEach((entry) => entry.scene.resize());
+  }
+
+  dispose() {
+    this.entries.forEach((entry) => entry.scene.dispose());
+    this.entries.clear();
+  }
+}

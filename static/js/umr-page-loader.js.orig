@@ -1,0 +1,67 @@
+const LOADERS = [
+  {
+    selector: "[data-umr-multi-robot-scene]",
+    rootMargin: "320px 0px",
+    load: () => import("./multi-robot-autoplay.js?v=20260824-viewport-runtime-v2")
+  },
+  {
+    selector: ".mj-studio-shell",
+    rootMargin: "180px 0px",
+    load: () => import("./mujoco-viewer.js?v=20260824-viewport-runtime-v2")
+  }
+];
+
+function loadNearViewport({ selector, rootMargin, load }) {
+  const target = document.querySelector(selector);
+  if (!target) return;
+
+  let started = false;
+  const start = () => {
+    if (started) return;
+    started = true;
+    load().catch((error) => {
+      console.error(`Could not initialize ${selector}`, error);
+      target.dataset.state = "error";
+    });
+  };
+
+  if (!("IntersectionObserver" in window)) {
+    start();
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    observer.disconnect();
+    start();
+  }, { rootMargin });
+  observer.observe(target);
+}
+
+LOADERS.forEach(loadNearViewport);
+prewarmMujocoNearStudio();
+
+function loadLazyImages() {
+  const images = [...document.querySelectorAll("img[data-lazy-src]")];
+  const load = (image) => {
+    if (!image.dataset.lazySrc) return;
+    image.src = image.dataset.lazySrc;
+    delete image.dataset.lazySrc;
+  };
+
+  if (!("IntersectionObserver" in window)) {
+    images.forEach(load);
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      observer.unobserve(entry.target);
+      load(entry.target);
+    });
+  }, { rootMargin: "480px 0px" });
+  images.forEach((image) => observer.observe(image));
+}
+
+loadLazyImages();
