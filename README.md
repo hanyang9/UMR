@@ -68,6 +68,8 @@ information can be integrated through the same formulation.
 | Humanoid Character | [MimicKit](https://github.com/xbpeng/MimicKit) | [`sample_data/humanoid_character/README.md`](sample_data/humanoid_character/README.md) |
 | NR FBX/BVH | FBX/BVH motion | [`sample_data/nr/README.md`](sample_data/nr/README.md) |
 
+> **OmniContact support.** An internal development version of UMR was used to produce the Unitree G1 retargeting data released by [OmniContact](https://omnicontact.github.io/). OmniContact provides the source motions as BVH, while UMR uses SMPL-X inputs. The internal BVH-to-SMPL-X converter is not included in this repository, so the current release does not directly support these BVH files.
+
 For LAFAN1, use [`lafan_to_smplx`](https://github.com/jaraujo98/lafan_to_smplx)
 to convert BVH motion to SMPL-X before retargeting. Each adapter guide documents
 the expected local layout.
@@ -130,7 +132,7 @@ python scripts/humanoid_retarget_pipeline_hsi_hoi.py \
   --config robot_configs/humanoid_retarget_unitree_g1_example.json \
   --defaults humanoid_retarget_defaults_hsi_hoi_grail.json
 
-# OmniContact human-object interaction
+# OmniContact human-object interaction (pre-converted SMPL-X input)
 python scripts/humanoid_retarget_pipeline_hsi_hoi.py \
   --config robot_configs/humanoid_retarget_unitree_g1_example.json \
   --defaults humanoid_retarget_defaults_hsi_hoi_standard.json
