@@ -444,6 +444,25 @@
     <figcaption class="umr-video-caption">Walking on Stairs</figcaption>
   </figure>
 </div>
+<h3 class="umr-section-heading" style="text-align: center;">Retargeting Morphologically Augmented Robots</h3>
+<blockquote style="text-align: justify; text-justify: inter-word;">
+  UMR supports retargeting to morphologically augmented robots, as demonstrated by the racket-equipped Unitree G1 in <a href="https://humanoidtennis.github.io/AdaPT/" target="_blank" rel="noopener noreferrer">AdaPT</a>. The racket is an interaction object in the human motion but also a rigid part of the robot embodiment. UMR handles both roles in a unified formulation by learning point-cloud correspondences between the SMPL-X+racket and G1+racket systems, aligning the racket-face orientation and trajectory while preserving human&#8211;racket interactions.
+</blockquote>
+<div class="umr-baseline-locomotion-grid" role="group" aria-label="Tennis playing motion retargeting results">
+  <figure class="umr-baseline-video-card">
+    <div class="umr-baseline-video">
+      <img src="./tennis_tpose_correspondence_mesh_bound.png?v=20260909" alt="Mesh-bound T-pose surface correspondence between SMPL-X with a racket and G1 equipped with a racket" width="2560" height="1440" loading="lazy" decoding="async">
+    </div>
+    <figcaption class="umr-video-caption">Body+Racket Pointcloud Correspondence</figcaption>
+  </figure>
+  <figure class="umr-baseline-video-card">
+    <div class="umr-baseline-video">
+      <video data-lazy-src="./comparison_tennis_racket_three_way_30fps.mp4?v=20260908-label-offset-1p9-v1" poster="./comparison_tennis_racket_three_way_poster.jpg?v=20260908-label-offset-1p9-v1" aria-label="Tennis playing motion retargeting comparison between Mocap, UMR, and GMR" width="2560" height="1440" controls muted playsinline preload="metadata"></video>
+    </div>
+    <figcaption class="umr-video-caption">Tennis Playing Motion Retargeting</figcaption>
+  </figure>
+</div>
+
 <h3 class="umr-section-heading" style="text-align: center;">Deployment in Real World</h3>
 <blockquote style="text-align: justify; text-justify: inter-word;">
   The demonstrations below show policies trained from reference motions retargeted by UMR and deployed to perform a range of real-world tasks. The reference data comes from <a href="https://github.com/xbpeng/MimicKit">MimicKit</a>, <a href="https://research.nvidia.com/labs/dair/grail/">GRAIL</a>, and <a href="https://omnicontact.github.io/">OmniContact</a>, with policy training powered by the <a href="https://beyondmimic.github.io/">BeyondMimic</a>, <a href="https://github.com/amazon-far/holosoma">Holosoma</a>, and <a href="https://omnicontact.github.io/">OmniContact</a> pipelines.
