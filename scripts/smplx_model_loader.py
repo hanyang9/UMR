@@ -48,19 +48,37 @@ def build_smplx_model(model_dir: Path, gender: str, batch_size: int):
             )
         base_model = _resolve_from_manifest(manifest_path, manifest["base_model_dir"])
 
-    direct_file = (
-        base_model
-        if base_model.is_file()
-        else base_model / f"SMPLX_{str(gender).upper()}.pkl"
-    )
-    model_path = direct_file if direct_file.is_file() else base_model
+    if base_model.is_file():
+        model_path = base_model
+        model_ext = model_path.suffix.lower().lstrip(".")
+        if model_ext not in {"pkl", "npz"}:
+            raise ValueError(
+                f"Unsupported SMPL-X model extension {model_path.suffix!r}: {model_path}"
+            )
+    else:
+        model_path = None
+        model_ext = ""
+        candidates = [
+            base_model / f"SMPLX_{str(gender).upper()}.pkl",
+            base_model / f"SMPLX_{str(gender).upper()}.npz",
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                model_path = candidate
+                model_ext = candidate.suffix.lower().lstrip(".")
+                break
+        if model_path is None:
+            tried = ", ".join(str(candidate) for candidate in candidates)
+            raise FileNotFoundError(f"Could not find an SMPL-X model. Tried: {tried}")
+
+    print(f"[SMPLXModel] loading format={model_ext} path={model_path}")
     model = smplx.SMPLX(
         str(model_path),
         gender=str(gender).lower(),
         use_pca=False,
         flat_hand_mean=True,
         num_betas=10,
-        ext="pkl",
+        ext=model_ext,
         batch_size=int(batch_size),
     )
 
