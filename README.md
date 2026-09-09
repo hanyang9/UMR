@@ -86,15 +86,18 @@ python -m pip install -r requirements-umr.txt
 ### SMPL-X Body Models
 
 SMPL-X body-model files are not distributed with this repository. Download
-them from the official SMPL-X provider after accepting its terms, then place at
-least the neutral model at:
+them from the official SMPL-X provider after accepting its terms. Both `.pkl`
+and `.npz` models are supported; place at least the neutral model at:
 
 ```text
 smpl/SMPLX_NEUTRAL.pkl
+# or
+smpl/SMPLX_NEUTRAL.npz
 ```
 
-Add `SMPLX_MALE.pkl` and `SMPLX_FEMALE.pkl` when a sequence requires those
-genders.
+Add `SMPLX_MALE` and `SMPLX_FEMALE` in either format when a sequence requires
+those genders. The NPZ path has been tested with both neutral SMPL-X motion and
+female OMOMO motion.
 
 The GRAIL example applies its bundled G1-SMPL-X template and pose-corrective
 overlay to the user-provided neutral SMPL-X model at runtime; the derived baked
@@ -113,6 +116,13 @@ The default configuration uses the included LAFAN1-derived SMPL-X sequence
 `sample_data/lafan1_smplx/dance1_subject2.npz`. It builds or reuses the learned
 point-cloud correspondence, runs correspondence-guided retargeting, and opens
 the MuJoCo viewer.
+
+To use another robot, copy the example config in `robot_configs/` and update
+its name and MJCF path. Prepare the robot T-pose in
+[UMR Studio](https://hanyang9.github.io/UMR/umr_studio.html): load the robot
+asset folder, select its MJCF, adjust it into a T-pose, and click **Copy T-pose
+Config**. Paste the copied `tpose_qpos` into the new robot config, then run the
+pipeline with that config. No manual human-robot mapping is required.
 
 The same surface-based formulation is exposed for other motion representations
 and interaction settings:
