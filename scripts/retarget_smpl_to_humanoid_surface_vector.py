@@ -51,6 +51,7 @@ BODY_SEGMENT_MODULES = {
     BODY_SEGMENT_MODULE_DEFAULT,
     "retarget_body_segment_surface_hoi_hsi",
     "retarget_body_segment_surface_racket",
+    "retarget_body_segment_surface_adapt",
 }
 BODY_SEGMENT_EXPORTS = (
     "SMPLX_PART_IDS",

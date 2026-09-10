@@ -474,7 +474,8 @@ def retarget_result_compatible(result_path: Path, config: dict[str, Any], quiet=
     expected_source = "" if expected_source_path is None else str(expected_source_path)
     expected_sequence_key, expected_sequence = _motion_sequence_for_template(config)
     expected_source_format = "" if expected_sequence is None else str(expected_sequence.get("source_format", ""))
-    expected_robot = str(robot_config(config).get("name", ""))
+    robot = robot_config(config)
+    expected_robot = str(robot.get("slot_name", robot.get("name", "")))
 
     try:
         with np.load(result_path, allow_pickle=True) as data:

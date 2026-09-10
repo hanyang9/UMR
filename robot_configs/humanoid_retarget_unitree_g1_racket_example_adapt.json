@@ -1,0 +1,26 @@
+{
+  "extends": "humanoid_retarget_defaults_adapt.json",
+  "robot": {
+    "name": "unitree_g1_27dof_left_racket_object_contact_adapt",
+    "slot_name": "unitree_g1_racket",
+    "xml": "../assets/g1/g1_27dof_left_racket_adapt.xml",
+    "point_cloud_center": "body:waist_yaw_link",
+    "sample_pose": "tpose",
+    "tpose_qpos": {
+      "left_shoulder_roll_joint": 1.57079632679,
+      "left_elbow_joint": 1.57079632679,
+      "right_shoulder_roll_joint": -1.57079632679,
+      "right_elbow_joint": 1.57079632679
+    },
+    "joint_limits": {
+      "left_knee_joint": [0.1, "inf"],
+      "right_knee_joint": [0.1, "inf"],
+      "left_wrist_pitch_joint": [-0.3, 0.8],
+      "right_wrist_pitch_joint": [-0.3, 0.8],
+      "left_elbow_joint": ["-inf", 1.57079632679],
+      "right_elbow_joint": ["-inf", 1.57079632679],
+      "left_shoulder_pitch_joint": [-3.0, 1.4],
+      "right_shoulder_pitch_joint": [-3.0, 1.4]
+    }
+  }
+}

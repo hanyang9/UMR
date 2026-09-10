@@ -66,6 +66,7 @@ information can be integrated through the same formulation.
 | LAFAN1 / SMPL-X | [LAFAN1](https://github.com/ubisoft/ubisoft-laforge-animation-dataset) | [`sample_data/lafan1_smplx/README.md`](sample_data/lafan1_smplx/README.md) |
 | OMOMO | [OMOMO](https://github.com/lijiaman/omomo_release) | [`sample_data/omomo/README.md`](sample_data/omomo/README.md) |
 | Humanoid Character | [MimicKit](https://github.com/xbpeng/MimicKit) | [`sample_data/humanoid_character/README.md`](sample_data/humanoid_character/README.md) |
+| AdaPT body+racket | [AdaPT](https://humanoidtennis.github.io/AdaPT/) | [`sample_data/adapt/README.md`](sample_data/adapt/README.md) |
 | NR FBX/BVH | FBX/BVH motion | [`sample_data/nr/README.md`](sample_data/nr/README.md) |
 
 > **OmniContact support.** An internal development version of UMR was used to produce the Unitree G1 retargeting data released by [OmniContact](https://omnicontact.github.io/). OmniContact provides the source motions as BVH, while UMR uses SMPL-X inputs. The internal BVH-to-SMPL-X converter is not included in this repository, so the current release does not directly support these BVH files.
@@ -157,6 +158,9 @@ python scripts/humanoid_retarget_pipeline_hsi_hoi.py \
 # NR FBX/BVH human motion
 python scripts/humanoid_retarget_pipeline_nr.py \
   --config robot_configs/humanoid_retarget_unitree_g1_example.json
+
+# AdaPT body+racket correspondence and retargeting
+python scripts/humanoid_retarget_pipeline_adapt.py
 ```
 
 ## Visualize a Result
@@ -222,6 +226,7 @@ task-specific settings.
 | `humanoid_retarget_defaults_hsi_hoi_grail.json` | GRAIL |
 | `humanoid_retarget_defaults_hsi_hoi_standard.json` | OmniContact / OMOMO |
 | `humanoid_retarget_defaults_nr.json` | NR FBX/BVH |
+| `robot_configs/humanoid_retarget_defaults_adapt.json` | AdaPT SMPL-X+racket |
 
 ### Surface Objective Weights
 
@@ -232,6 +237,7 @@ Surface weights are defined on the motion source, not per robot:
 | SMPL/SMPL-X and SOMA | [`retarget_body_segment_surface.py`](scripts/retarget_body_segment_surface.py) |
 | Humanoid Character | [`retarget_body_segment_surface_character.py`](scripts/retarget_body_segment_surface_character.py) |
 | HSI/HOI and NR | [`retarget_body_segment_surface_hoi_hsi.py`](scripts/retarget_body_segment_surface_hoi_hsi.py) |
+| AdaPT body+racket | [`retarget_body_segment_surface_adapt.py`](scripts/retarget_body_segment_surface_adapt.py) |
 
 Each segment specifies `sample_slots`, `point_cost`, and `normal_cost`. Robots
 sharing the same source/task use the same values; only the robot config changes.
