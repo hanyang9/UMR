@@ -30,14 +30,6 @@
       "Right_Knee_Pitch": 0.0,
       "Right_Ankle_Pitch": 0.0,
       "Right_Ankle_Roll": 0.0
-    },
-    "joint_limits": {
-      "Right_Elbow_Yaw": [0.05, 2.4],
-      "Left_Elbow_Yaw": [-2.4, -0.05],
-      "Left_Elbow_Pitch": [-1.5707963267948966, 1.5707963267948966],
-      "Right_Elbow_Pitch": [-1.5707963267948966, 1.5707963267948966],
-      "Right_Shoulder_Roll": [-1.57, 1.5],
-      "Left_Shoulder_Roll": [-1.5, 1.57]
     }
   },
   "correspondence": {

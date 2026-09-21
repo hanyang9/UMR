@@ -22,20 +22,6 @@
       "right_wrist_roll_joint": 0.0,
       "right_wrist_pitch_joint": 0.0,
       "right_wrist_yaw_joint": 0.0
-    },
-    "joint_limits": {
-      "left_knee_joint": [0.1, "inf"],
-      "right_knee_joint": [0.1, "inf"],
-      "waist_roll_joint": [-0.3, 0.3],
-      "waist_pitch_joint": [-0.1, "inf"],
-      "left_elbow_joint": ["-inf", 1.4],
-      "left_wrist_roll_joint": [-0.1, 0.2],
-      "left_wrist_pitch_joint": [-0.1, 0.3],
-      "left_wrist_yaw_joint": [-0.1, 0.1],
-      "right_elbow_joint": ["-inf", 1.4],
-      "right_wrist_roll_joint": [-0.1, 0.2],
-      "right_wrist_pitch_joint": [-0.1, 0.3],
-      "right_wrist_yaw_joint": [-0.1, 0.1]
     }
   },
   "correspondence": {

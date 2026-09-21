@@ -136,7 +136,7 @@
     "self_contact_map_body_topk": {
       "default": 1
     },
-    "object_contact_map_cost": 0.0,
+    "object_contact_map_cost": 5.0,
     "object_contact_map_threshold": 0.1,
     "object_contact_map_snap_threshold": 0.005,
     "object_contact_map_max_points": 128,
