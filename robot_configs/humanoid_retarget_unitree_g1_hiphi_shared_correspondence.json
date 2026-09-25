@@ -1,0 +1,26 @@
+{
+  "extends": [
+    "../humanoid_retarget_defaults.json",
+    "humanoid_retarget_unitree_g1_example.json"
+  ],
+  "smpl_template": {
+    "source": "config",
+    "type": "smplx",
+    "gender": "neutral",
+    "use_betas": true,
+    "use_gender": true,
+    "name": "auto",
+    "betas": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  },
+  "correspondence": {
+    "smpl_name": "auto",
+    "dataset": {
+      "out": "../data/correspondence_unitree_g1_smplx_neutral_betas_b80de5d138.npz"
+    },
+    "train": {
+      "out_dir": "../output/correspondence_unitree_g1_smplx_neutral_betas_b80de5d138",
+      "template_name": "auto",
+      "device": "auto"
+    }
+  }
+}

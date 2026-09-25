@@ -35,6 +35,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 import smpl_surface_retarget_common as common  # noqa: E402
+import shared_smplx_correspondence  # noqa: E402
 from humanoid_retarget_config import load_config, resolve_path, robot_config, section  # noqa: E402
 from mujoco_geom_surface import geom_local_mesh, surface_geom_ids  # noqa: E402
 from mujoco_point_cloud_center import point_cloud_center_frame  # noqa: E402
@@ -1184,33 +1185,67 @@ def load_object_contact_source(args, frame_ids, source_slots, smpl_scale, ground
     )
     if not needs_object_contact and not needs_robot_object:
         return None
-    source_dir = resolve_object_contact_source_dir(args)
-    if source_dir is None:
-        print("[HumanoidRetarget][ObjectSource][WARN] no source object directory; disabling object contact/robot-object constraints.")
-        args.object_contact_map_cost = 0.0
-        args.robot_object_hard_constraint = False
-        args.robot_object_penetration_soft_cost = 0.0
-        return None
-    stems = sorted({path.stem for path in source_dir.glob("*.xml")} | {path.stem for path in source_dir.glob("*.obj")})
+    hsi = section(args.config_data, "hsi_hoi")
+    configured_objects = hsi.get("source_objects", [])
     candidates = []
-    for stem in stems:
-        source = source_dir / f"{stem}.xml" if (source_dir / f"{stem}.xml").exists() else source_dir / f"{stem}.obj"
-        try:
-            prop = resolve_prop_trajectory(source)
-        except FileNotFoundError:
-            continue
-        candidates.append((stem, source, prop))
-    if not candidates:
-        print(f"[HumanoidRetarget][ObjectSource][WARN] no object XML/OBJ with prop_*.csv found in {source_dir}; disabling.")
-        args.object_contact_map_cost = 0.0
-        args.robot_object_hard_constraint = False
-        args.robot_object_penetration_soft_cost = 0.0
-        return None
+    if configured_objects:
+        if not isinstance(configured_objects, list):
+            raise ValueError("hsi_hoi.source_objects must be a list")
+        for item in configured_objects:
+            if not isinstance(item, dict):
+                raise ValueError("Each hsi_hoi.source_objects entry must be an object")
+
+            def configured_path(key):
+                value = item.get(key)
+                if not value:
+                    return None
+                resolved = resolve_path(value, args.config_data)
+                return Path(resolved) if resolved is not None else None
+
+            xml_path = configured_path("xml")
+            obj_path = configured_path("obj")
+            prop_path = configured_path("prop")
+            if needs_robot_object and (xml_path is None or not xml_path.is_file()):
+                raise FileNotFoundError(
+                    f"Preprocessed object XML is required by robot-object penetration constraints: {xml_path}"
+                )
+            object_path = xml_path if xml_path is not None and xml_path.is_file() else obj_path
+            if object_path is None or not object_path.is_file():
+                raise FileNotFoundError(
+                    f"Configured object mesh is missing for {item.get('name', '<unnamed>')}: "
+                    f"xml={xml_path} obj={obj_path}"
+                )
+            if prop_path is None or not prop_path.is_file():
+                raise FileNotFoundError(
+                    f"Configured object trajectory is missing for {item.get('name', '<unnamed>')}: {prop_path}"
+                )
+            candidates.append((str(item.get("name") or object_path.stem), object_path, prop_path))
+    else:
+        source_dir = resolve_object_contact_source_dir(args)
+        if source_dir is None:
+            print("[HumanoidRetarget][ObjectSource][WARN] no source object directory; disabling object contact/robot-object constraints.")
+            args.object_contact_map_cost = 0.0
+            args.robot_object_hard_constraint = False
+            args.robot_object_penetration_soft_cost = 0.0
+            return None
+        stems = sorted({path.stem for path in source_dir.glob("*.xml")} | {path.stem for path in source_dir.glob("*.obj")})
+        for stem in stems:
+            source = source_dir / f"{stem}.xml" if (source_dir / f"{stem}.xml").exists() else source_dir / f"{stem}.obj"
+            try:
+                prop = resolve_prop_trajectory(source)
+            except FileNotFoundError:
+                continue
+            candidates.append((stem, source, prop))
+        if not candidates:
+            print(f"[HumanoidRetarget][ObjectSource][WARN] no object XML/OBJ with prop_*.csv found in {source_dir}; disabling.")
+            args.object_contact_map_cost = 0.0
+            args.robot_object_hard_constraint = False
+            args.robot_object_penetration_soft_cost = 0.0
+            return None
     if len(candidates) > 1:
         print(f"[HumanoidRetarget][ObjectContactMap][WARN] multiple objects found; using first: {candidates[0][0]}")
     object_name, object_path, prop_path = candidates[0]
 
-    hsi = section(args.config_data, "hsi_hoi")
     object_cfg = section(hsi, "object")
     output_up = str(object_cfg.get("output_up", hsi.get("output_up", "z")))
     convert_y_up = bool_config(object_cfg.get("convert_y_up"), True)
@@ -2162,6 +2197,20 @@ def main():
         joint_names=source_joint_names,
         source_type=source_model_type,
     )
+    transferred_smpl_slots = shared_smplx_correspondence.transfer_slots(
+        config=args.config_data,
+        slots_path=args.slots,
+        slots_field=args.slots_field,
+        slot_name=smpl_slot_name,
+        motion_template_vertices_centered=template_vertices_centered,
+        motion_template_faces=faces,
+        center_mode=center_mode,
+        source_model_type=source_model_type,
+        smplx_model_dir=args.smplx_model_dir,
+        nearest_vertex_k=args.bind_nearest_vertex_k,
+    )
+    if transferred_smpl_slots is not None:
+        smpl_slots = transferred_smpl_slots
     print(
         f"[HumanoidRetarget] source slots={smpl_slot_name} center_mode={center_mode} "
         f"template_center={template_center.tolist()}"

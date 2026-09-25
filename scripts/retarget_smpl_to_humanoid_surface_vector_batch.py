@@ -30,6 +30,8 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 import smpl_surface_retarget_common as common  # noqa: E402
+import retarget_smpl_to_humanoid_surface_vector as full_retarget  # noqa: E402
+import shared_smplx_correspondence  # noqa: E402
 from humanoid_retarget_config import load_config, resolve_path, robot_config, section  # noqa: E402
 from mujoco_geom_surface import geom_local_mesh, surface_geom_ids  # noqa: E402
 from mujoco_point_cloud_center import point_cloud_center_frame  # noqa: E402
@@ -170,6 +172,32 @@ def parse_args(argv=None):
     parser.add_argument("--self-contact-map-threshold", type=float, default=None)
     parser.add_argument("--self-contact-map-max-pairs", type=int, default=None)
     parser.add_argument("--self-contact-map-body-topk", "--self-contact-map-body-slot-caps", dest="self_contact_map_body_topk", default=None)
+    parser.add_argument("--object-contact-map-cost", type=float, default=None)
+    parser.add_argument("--object-contact-map-threshold", type=float, default=None)
+    parser.add_argument("--object-contact-map-snap-threshold", type=float, default=None)
+    parser.add_argument("--object-contact-map-max-points", type=int, default=None)
+    parser.add_argument("--object-contact-map-samples", type=int, default=None)
+    parser.add_argument("--retarget-object-size", choices=("scaled", "original"), default=None)
+    parser.add_argument("--robot-object-penetration-soft-cost", type=float, default=None)
+    parser.add_argument(
+        "--robot-object-hard-constraint",
+        "--robot-object-penetration-hard-constraint",
+        dest="robot_object_hard_constraint",
+        action="store_true",
+        default=None,
+    )
+    parser.add_argument(
+        "--no-robot-object-hard-constraint",
+        "--no-robot-object-penetration-hard-constraint",
+        dest="robot_object_hard_constraint",
+        action="store_false",
+    )
+    parser.add_argument("--robot-object-margin", type=float, default=None)
+    parser.add_argument("--robot-object-hard-slack", action="store_true", default=None)
+    parser.add_argument("--no-robot-object-hard-slack", dest="robot_object_hard_slack", action="store_false")
+    parser.add_argument("--robot-object-hard-slack-cost", type=float, default=None)
+    parser.add_argument("--robot-object-threshold", type=float, default=None)
+    parser.add_argument("--robot-object-max-pairs", type=int, default=None)
     parser.add_argument("--joint-map-cost", type=float, default=None)
     parser.add_argument("--smooth-cost", type=float, default=None)
     parser.add_argument("--temporal-smooth-cost", type=float, default=None)
@@ -376,6 +404,19 @@ def fill_args_from_config(args):
         "self_contact_map_body_topk",
         solver.get("self_contact_map_body_topk", solver.get("self_contact_map_body_slot_caps", {})),
     )
+    set_default(args, "object_contact_map_cost", solver.get("object_contact_map_cost", 0.0))
+    set_default(args, "object_contact_map_threshold", solver.get("object_contact_map_threshold", 0.10))
+    set_default(args, "object_contact_map_snap_threshold", solver.get("object_contact_map_snap_threshold", 0.005))
+    set_default(args, "object_contact_map_max_points", solver.get("object_contact_map_max_points", 128))
+    set_default(args, "object_contact_map_samples", solver.get("object_contact_map_samples", 1024))
+    set_default(args, "retarget_object_size", solver.get("retarget_object_size", "scaled"))
+    set_default(args, "robot_object_penetration_soft_cost", solver.get("robot_object_penetration_soft_cost", 0.0))
+    set_default(args, "robot_object_hard_constraint", solver.get("robot_object_hard_constraint", False))
+    set_default(args, "robot_object_margin", solver.get("robot_object_margin", 0.0))
+    set_default(args, "robot_object_hard_slack", solver.get("robot_object_hard_slack", False))
+    set_default(args, "robot_object_hard_slack_cost", solver.get("robot_object_hard_slack_cost", 0.0))
+    set_default(args, "robot_object_threshold", solver.get("robot_object_threshold", solver.get("collision_threshold", 0.1)))
+    set_default(args, "robot_object_max_pairs", solver.get("robot_object_max_pairs", 128))
     set_default(args, "joint_map_cost", solver.get("joint_map_cost", 0.0))
     set_default(args, "smooth_cost", solver.get("smooth_cost", 0.2))
     set_default(args, "temporal_smooth_cost", solver.get("temporal_smooth_cost", 0.1))
@@ -387,9 +428,7 @@ def fill_args_from_config(args):
     set_default(args, "trajectory_filter_root_translation", solver.get("trajectory_filter_root_translation", False))
     set_default(args, "trajectory_filter_anchor_start_frames", solver.get("trajectory_filter_anchor_start_frames", 1))
     set_default(args, "trajectory_filter_anchor_end_frames", solver.get("trajectory_filter_anchor_end_frames", 1))
-    # Batch retargeting favors robustness to occasional singularities: solve
-    # both temporal directions and let the downstream DP select a smooth path.
-    set_default(args, "trajectory_warm_start_mode", "bidirectional")
+    set_default(args, "trajectory_warm_start_mode", solver.get("trajectory_warm_start_mode", "sequential"))
     set_default(
         args,
         "trajectory_warm_start_bidirectional_continuity_cost",
@@ -763,7 +802,9 @@ def prepare_robot_xml(args) -> Path:
     if xml_policy.get("add_freejoint_root", True) is False:
         return source_xml
 
-    output_xml = Path(args.out).with_suffix(".floating_mjcf.xml")
+    output_xml = source_xml.parent / (
+        Path(args.out).with_suffix(".floating_mjcf.xml").name
+    )
     tree = ET.parse(source_xml)
     root = tree.getroot()
     worldbody = root.find("worldbody")
@@ -950,6 +991,7 @@ def solve_frame_body_segment_qp(
     source_self_contact_map,
     source_ground_contact_distances,
     source_ground_contact_weight_distances,
+    object_contact_frame,
     robot_template,
     joint_qpos_addrs,
     joint_dof_addrs,
@@ -958,6 +1000,7 @@ def solve_frame_body_segment_qp(
     joint_limits_by_qpos=None,
     robot_self_penetration_cache=None,
     ground_penetration_collision_cache=None,
+    robot_object_penetration_cache=None,
     ground_contact_anchor_state=None,
 ):
     qpos = qpos_init.copy()
@@ -967,6 +1010,8 @@ def solve_frame_body_segment_qp(
     ground_contact_threshold = float(args.ground_contact_map_threshold)
     ground_contact_max_points = int(args.ground_contact_map_max_points)
     self_contact_cost = float(args.self_contact_map_cost)
+    object_contact_threshold = float(args.object_contact_map_threshold)
+    object_contact_max_points = int(args.object_contact_map_max_points)
     if ground_contact_anchor_state is None:
         ground_contact_anchor_state = {}
 
@@ -1188,6 +1233,50 @@ def solve_frame_body_segment_qp(
                 rows.append(anchor_row_costs[row] * jac)
                 residuals.append(anchor_row_costs[row] * (point - target))
 
+        if (
+            float(args.object_contact_map_cost) > 0.0
+            and object_contact_frame is not None
+            and object_contact_threshold >= 0.0
+        ):
+            target_distances = np.asarray(object_contact_frame["distances"], dtype=np.float64).reshape(-1)
+            object_ids = np.asarray(object_contact_frame["object_ids"], dtype=np.int32).reshape(-1)
+            target_vectors = np.asarray(object_contact_frame["pair_vectors"], dtype=np.float64).reshape(-1, 3)
+            object_mode = str(object_contact_frame.get("mode", "world_points"))
+            object_points = np.asarray(object_contact_frame["object_points"], dtype=np.float64).reshape(-1, 3)
+            if len(target_distances) != len(robot_template["geom_ids"]):
+                raise ValueError(
+                    f"Object contact slot count mismatch: target={len(target_distances)}, "
+                    f"robot={len(robot_template['geom_ids'])}"
+                )
+            active = np.where(target_distances <= object_contact_threshold)[0].astype(np.int32)
+            if active.size > 0 and (len(object_points) > 0 or object_mode == "robot_slot_object"):
+                if object_contact_max_points > 0 and active.size > object_contact_max_points:
+                    active = active[np.argsort(target_distances[active])[:object_contact_max_points]]
+                paired_ids = object_ids[active]
+                object_count = len(robot_template["geom_ids"]) if object_mode == "robot_slot_object" else len(object_points)
+                valid = (paired_ids >= 0) & (paired_ids < object_count)
+                active = active[valid]
+                paired_ids = paired_ids[valid]
+                if active.size > 0:
+                    robot_points = slot_cache.points(active)
+                    if object_mode == "robot_slot_object":
+                        current_vectors = robot_points - slot_cache.points(paired_ids)
+                    else:
+                        current_vectors = robot_points - object_points[paired_ids]
+                    strength = np.clip(
+                        (object_contact_threshold - target_distances[active])
+                        / max(object_contact_threshold, 1e-8),
+                        0.5,
+                        1.0,
+                    )
+                    row_costs = float(args.object_contact_map_cost) * strength
+                    for row, slot_id in enumerate(active):
+                        jac = slot_cache.point_jacobian(int(slot_id))
+                        if object_mode == "robot_slot_object":
+                            jac = jac - slot_cache.point_jacobian(int(paired_ids[row]))
+                        rows.append(row_costs[row] * jac)
+                        residuals.append(row_costs[row] * (current_vectors[row] - target_vectors[int(slot_id)]))
+
         if qpos_prev is not None and float(args.smooth_cost) > 0.0 and smooth_jac is not None:
             rows.append(sqrt_smooth * smooth_jac)
             residuals.append(sqrt_smooth * (qpos[joint_qpos_addrs] - qpos_prev[joint_qpos_addrs]))
@@ -1222,6 +1311,38 @@ def solve_frame_body_segment_qp(
                     continue
                 rows.append(sqrt_self * np.asarray(jac, dtype=np.float64).reshape(1, model.nv))
                 residuals.append(np.asarray([sqrt_self * (float(phi) - tolerance)], dtype=np.float64))
+
+        robot_object_soft_cost = float(args.robot_object_penetration_soft_cost)
+        robot_object_hard = bool(args.robot_object_hard_constraint)
+        jacobians_object = []
+        distances_object = []
+        if (
+            (robot_object_soft_cost > 0.0 or robot_object_hard)
+            and object_contact_frame is not None
+            and robot_object_penetration_cache is not None
+        ):
+            object_pose = np.concatenate(
+                [
+                    np.asarray(object_contact_frame["object_position"], dtype=np.float64).reshape(3),
+                    np.asarray(object_contact_frame["object_quat_wxyz"], dtype=np.float64).reshape(4),
+                ]
+            )
+            robot_object_margin = float(args.robot_object_margin)
+            jacobians_object, distances_object = full_retarget.compute_robot_object_penetration_rows(
+                qpos,
+                object_pose,
+                robot_object_penetration_cache,
+                margin=robot_object_margin,
+                threshold=float(args.robot_object_threshold),
+                max_pairs=int(args.robot_object_max_pairs),
+            )
+            if robot_object_soft_cost > 0.0:
+                sqrt_object = np.sqrt(robot_object_soft_cost)
+                for jac, phi in zip(jacobians_object, distances_object):
+                    if (robot_object_margin - float(phi)) <= 0.0:
+                        continue
+                    rows.append(sqrt_object * np.asarray(jac, dtype=np.float64).reshape(1, model.nv))
+                    residuals.append(np.asarray([sqrt_object * (float(phi) - robot_object_margin)], dtype=np.float64))
 
         J = np.concatenate(rows, axis=0)
         r = np.concatenate(residuals, axis=0)
@@ -1331,6 +1452,20 @@ def solve_frame_body_segment_qp(
                 ineq_rows.append(-np.asarray(jac, dtype=np.float64).reshape(model.nv))
                 ineq_bounds.append(float(phi) - margin)
                 ineq_soft_costs.append(slack_cost)
+        if (
+            bool(args.robot_object_hard_constraint)
+            and object_contact_frame is not None
+            and robot_object_penetration_cache is not None
+        ):
+            object_slack_cost = (
+                float(args.robot_object_hard_slack_cost)
+                if bool(args.robot_object_hard_slack)
+                else 0.0
+            )
+            for jac, phi in zip(jacobians_object, distances_object):
+                ineq_rows.append(-np.asarray(jac, dtype=np.float64).reshape(model.nv))
+                ineq_bounds.append(float(phi) - float(args.robot_object_margin))
+                ineq_soft_costs.append(object_slack_cost)
         ineq_A = np.asarray(ineq_rows, dtype=np.float64) if ineq_rows else None
         ineq_b = np.asarray(ineq_bounds, dtype=np.float64) if ineq_bounds else None
         ineq_soft_costs_array = np.asarray(ineq_soft_costs, dtype=np.float64) if ineq_rows else None
@@ -1644,6 +1779,88 @@ def load_source_feature_cache(cache_path, *, args, seq_key, frame_ids, template_
     return cache
 
 
+
+def compact_object_contact_template(source):
+    if source is None:
+        return None
+    keep = (
+        "name",
+        "path",
+        "prop_path",
+        "source_mesh_scale",
+        "retarget_mesh_scale",
+        "retarget_object_size",
+        "source_points_local",
+        "retarget_points_local",
+    )
+    return {key: source[key] for key in keep}
+
+
+def object_contact_source_from_template(args, template, frame_ids, source_slots, smpl_scale):
+    if template is None:
+        return None
+    hsi = section(args.config_data, "hsi_hoi")
+    object_cfg = section(hsi, "object")
+    output_up = str(object_cfg.get("output_up", hsi.get("output_up", "z")))
+    convert_y_up = bool_config(object_cfg.get("convert_y_up"), True)
+    ground_align = bool_config(object_cfg.get("ground_align"), False)
+    floor_y = float(object_cfg.get("floor_y", 0.0))
+    ground_offset = float(object_cfg.get("ground_offset", 0.0))
+    object_motion = full_retarget.read_prop_motion(
+        template["prop_path"],
+        frame_ids,
+        output_up,
+        convert_y_up,
+        ground_align,
+        floor_y,
+        ground_offset,
+        smpl_scale,
+    )
+    source_points_local = np.asarray(template["source_points_local"], dtype=np.float32)
+    retarget_points_local = np.asarray(template["retarget_points_local"], dtype=np.float32)
+    source_slots = np.asarray(source_slots, dtype=np.float32)
+    source_points_world = np.empty(
+        (len(frame_ids), len(source_points_local), 3),
+        dtype=np.float32,
+    )
+    retarget_points_world = np.empty(
+        (len(frame_ids), len(retarget_points_local), 3),
+        dtype=np.float32,
+    )
+    distances = np.empty((len(frame_ids), source_slots.shape[1]), dtype=np.float32)
+    object_ids = np.empty((len(frame_ids), source_slots.shape[1]), dtype=np.int32)
+    pair_vectors = np.empty((len(frame_ids), source_slots.shape[1], 3), dtype=np.float32)
+    snap_threshold = float(args.object_contact_map_snap_threshold)
+    for frame_idx in range(len(frame_ids)):
+        rot = np.asarray(object_motion["rot_mats"][frame_idx], dtype=np.float32)
+        pos = np.asarray(object_motion["positions"][frame_idx], dtype=np.float32)
+        source_obj_world = source_points_local @ rot.T + pos[None, :]
+        retarget_obj_world = retarget_points_local @ rot.T + pos[None, :]
+        source_points_world[frame_idx] = source_obj_world
+        retarget_points_world[frame_idx] = retarget_obj_world
+        dist, ids = full_retarget.cKDTree(source_obj_world).query(source_slots[frame_idx], k=1)
+        ids = np.asarray(ids, dtype=np.int32)
+        vectors = source_slots[frame_idx] - source_obj_world[ids]
+        if snap_threshold > 0.0:
+            snap_mask = dist < snap_threshold
+            vectors[snap_mask] = 0.0
+            dist = np.asarray(dist, dtype=np.float32)
+            dist[snap_mask] = 0.0
+        distances[frame_idx] = np.asarray(dist, dtype=np.float32)
+        object_ids[frame_idx] = ids
+        pair_vectors[frame_idx] = vectors.astype(np.float32)
+
+    return {
+        **template,
+        "source_points_world": source_points_world,
+        "retarget_points_world": retarget_points_world,
+        "distances": distances,
+        "object_ids": object_ids,
+        "pair_vectors": pair_vectors,
+        "motion_positions": object_motion["positions"].astype(np.float32),
+        "motion_quats_wxyz": object_motion["quats_wxyz"].astype(np.float32),
+    }
+
 def main(argv=None):
     args = parse_args(argv)
     if not Path(args.data).exists():
@@ -1679,6 +1896,8 @@ def main(argv=None):
         if float(args.human_height) > 0.0
         else float(template_vertices[:, 1].max() - template_vertices[:, 1].min())
     )
+    if float(args.human_height) <= 0.0 and str(sequence.get("human_scale_mode", "off")).lower() in {"local", "world"}:
+        human_height *= float(sequence.get("human_scale", 1.0))
 
     smpl_slot_name = args.smpl_name
     if smpl_slot_name == "auto":
@@ -1696,6 +1915,20 @@ def main(argv=None):
         joint_names=source_joint_names,
         source_type=source_model_type,
     )
+    transferred_smpl_slots = shared_smplx_correspondence.transfer_slots(
+        config=args.config_data,
+        slots_path=args.slots,
+        slots_field=args.slots_field,
+        slot_name=smpl_slot_name,
+        motion_template_vertices_centered=template_vertices_centered,
+        motion_template_faces=faces,
+        center_mode=center_mode,
+        source_model_type=source_model_type,
+        smplx_model_dir=args.smplx_model_dir,
+        nearest_vertex_k=args.bind_nearest_vertex_k,
+    )
+    if transferred_smpl_slots is not None:
+        smpl_slots = transferred_smpl_slots
     print(
         f"[HumanoidRetarget] source slots={smpl_slot_name} center_mode={center_mode} "
         f"template_center={template_center.tolist()}"
@@ -1823,6 +2056,9 @@ def main(argv=None):
     data_mj = mujoco.MjData(model)
     robot_self_penetration_cache = common.build_robot_self_penetration_cache(model, args)
     ground_penetration_collision_cache = common.build_ground_penetration_collision_cache(model, args)
+    object_contact_template = None
+    object_contact_resolved = False
+    robot_object_penetration_cache = None
     configured_limits = config_joint_limits(args.config_data)
     joint_limits_by_qpos, configured_limit_matches = common.build_scalar_joint_limits(model, configured_limits)
     print(
@@ -1952,6 +2188,9 @@ def main(argv=None):
 
     def solve_stream_sequence(reverse: bool, desc: str, collect_debug: bool, progress):
         nonlocal progress_done
+        nonlocal object_contact_template
+        nonlocal object_contact_resolved
+        nonlocal robot_object_penetration_cache
         q_seq = np.empty((len(frame_ids), model.nq), dtype=np.float32)
         seq_costs = np.empty(len(frame_ids), dtype=np.float32)
         q_prev2 = None
@@ -2065,6 +2304,33 @@ def main(argv=None):
                 else:
                     surface_normal_targets = None
 
+            chunk_frame_ids = frame_ids[cache_indices]
+            if not object_contact_resolved:
+                object_contact_source = full_retarget.load_object_contact_source(
+                    args,
+                    chunk_frame_ids,
+                    source_slots,
+                    smpl_scale,
+                    ground_z,
+                )
+                object_contact_resolved = True
+                if object_contact_source is not None:
+                    robot_object_penetration_cache = full_retarget.build_robot_object_penetration_cache(
+                        robot_xml,
+                        object_contact_source,
+                        model,
+                        args,
+                    )
+                    object_contact_template = compact_object_contact_template(object_contact_source)
+            else:
+                object_contact_source = object_contact_source_from_template(
+                    args,
+                    object_contact_template,
+                    chunk_frame_ids,
+                    source_slots,
+                    smpl_scale,
+                )
+
             if collect_debug and source_ground_contact_distances is not None:
                 ground_active_counts_all.extend(
                     (
@@ -2084,6 +2350,17 @@ def main(argv=None):
                     q_init = initial_qpos_for_frame(joints_scaled[local_idx])
                 else:
                     q_init = q_prev.copy()
+                object_contact_frame = None
+                if object_contact_source is not None:
+                    object_contact_frame = {
+                        "mode": object_contact_source.get("mode", "world_points"),
+                        "distances": object_contact_source["distances"][local_idx],
+                        "object_ids": object_contact_source["object_ids"][local_idx],
+                        "pair_vectors": object_contact_source["pair_vectors"][local_idx],
+                        "object_points": object_contact_source["retarget_points_world"][local_idx],
+                        "object_position": object_contact_source["motion_positions"][local_idx],
+                        "object_quat_wxyz": object_contact_source["motion_quats_wxyz"][local_idx],
+                    }
                 q_opt, cost = solve_frame_body_segment_qp(
                     model,
                     data_mj,
@@ -2100,6 +2377,7 @@ def main(argv=None):
                     None if source_self_contact_maps is None else source_self_contact_maps[local_idx],
                     None if source_ground_contact_distances is None else source_ground_contact_distances[local_idx],
                     None if source_ground_contact_weight_distances is None else source_ground_contact_weight_distances[local_idx],
+                    object_contact_frame,
                     robot_template,
                     joint_qpos_addrs,
                     joint_dof_addrs,
@@ -2108,6 +2386,7 @@ def main(argv=None):
                     joint_limits_by_qpos=joint_limits_by_qpos,
                     robot_self_penetration_cache=robot_self_penetration_cache,
                     ground_penetration_collision_cache=ground_penetration_collision_cache,
+                    robot_object_penetration_cache=robot_object_penetration_cache,
                     ground_contact_anchor_state=ground_contact_anchor_state,
                 )
                 q_seq[out_idx] = q_opt.astype(np.float32)

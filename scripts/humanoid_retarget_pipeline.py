@@ -976,15 +976,22 @@ def retarget_motion(config: dict[str, Any], slots_path: Path, force=False, dry_r
     extra = retarget.get("extra_args", {})
     if isinstance(extra, dict):
         retarget_args.update(extra)
+    stream_chunk_frames = max(0, int(retarget.get("stream_chunk_frames", 0)))
+    retarget_script = (
+        "retarget_smpl_to_humanoid_surface_vector_batch.py"
+        if stream_chunk_frames > 0
+        else "retarget_smpl_to_humanoid_surface_vector.py"
+    )
     print(
         "[HumanoidPipeline] retarget motion "
         f"seq_key={motion.get('seq_key')!r} seq_index={motion_args['seq_index']} "
         f"frames={motion_args['start']}:{motion_args['end']}:{motion_args['stride']} "
-        f"max_frames={motion_args['max_frames']}"
+        f"max_frames={motion_args['max_frames']} "
+        f"stream_chunk_frames={stream_chunk_frames}"
     )
     cmd = [
         PYTHON,
-        str(SCRIPTS / "retarget_smpl_to_humanoid_surface_vector.py"),
+        str(SCRIPTS / retarget_script),
         "--config",
         str(Path(config["_config_path"])),
         *list_of_args(motion_args),
@@ -994,6 +1001,8 @@ def retarget_motion(config: dict[str, Any], slots_path: Path, force=False, dry_r
         "--out",
         str(out),
     ]
+    if stream_chunk_frames > 0:
+        cmd.extend(["--stream-chunk-frames", str(stream_chunk_frames)])
     if corr.get("slots_field"):
         cmd.extend(["--slots-field", str(corr["slots_field"])])
     run_command(cmd, dry_run=dry_run)

@@ -21,6 +21,8 @@ import mujoco.viewer
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
+from hiphi_layout import resolve_hiphi_objects
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -940,8 +942,24 @@ def prepare_source_objects(args, result, playback_frame_ids: np.ndarray, temp_di
     source_dir = resolve_source_data_dir(result)
     if source_dir is None:
         return []
-    stems = sorted({path.stem for path in source_dir.glob("*.obj")} | {path.stem for path in source_dir.glob("*.xml")})
-    if not stems:
+    if source_format == "hiphi_smplx":
+        try:
+            object_entries = resolve_hiphi_objects(source_dir)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"[{VIS_PREFIX}][Objects][WARN] could not resolve HiPHI metadata objects: {exc}")
+            object_entries = []
+    else:
+        stems = sorted({path.stem for path in source_dir.glob("*.obj")} | {path.stem for path in source_dir.glob("*.xml")})
+        object_entries = [
+            {
+                "name": stem,
+                "xml": str(source_dir / f"{stem}.xml"),
+                "obj": str(source_dir / f"{stem}.obj"),
+                "prop": str(source_dir / f"prop_{stem}.csv"),
+            }
+            for stem in stems
+        ]
+    if not object_entries:
         return []
 
     output_up = scalar_string(result["noitom_output_up"]) if "noitom_output_up" in result else "y"
@@ -984,9 +1002,11 @@ def prepare_source_objects(args, result, playback_frame_ids: np.ndarray, temp_di
     )
 
     objects = []
-    for object_id, stem in enumerate(stems):
-        xml_path = source_dir / f"{stem}.xml"
-        obj_path = source_dir / f"{stem}.obj"
+    for object_id, entry in enumerate(object_entries):
+        stem = str(entry["name"])
+        xml_path = Path(entry["xml"])
+        obj_path = Path(entry["obj"])
+        prop_path = Path(entry["prop"])
         source_path, render_source = select_object_render_path(xml_path, obj_path, getattr(args, "object_render_source", "auto"))
         if source_path is None:
             print(
@@ -994,8 +1014,8 @@ def prepare_source_objects(args, result, playback_frame_ids: np.ndarray, temp_di
                 f"{getattr(args, 'object_render_source', 'auto')} requested {render_source}"
             )
             continue
-        prop_path = source_dir / f"prop_{stem}.csv"
         if not prop_path.exists():
+            print(f"[{VIS_PREFIX}][Objects][WARN] skip {stem}: trajectory missing: {prop_path}")
             continue
         source_motion = load_noitom_prop_motion(
             prop_path,

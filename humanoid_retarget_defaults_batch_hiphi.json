@@ -1,0 +1,26 @@
+{
+  "batch": {
+    "data_root": "sample_data/hiphi",
+    "workers": 1,
+    "object_workers": 1,
+    "object_cpu_threads": 1,
+    "retarget_cpu_threads": 1,
+    "retarget_gpus": "none",
+    "output_root": "output/batch_retarget_hiphi",
+    "skip_existing": true,
+    "compact_log": true,
+    "progress_bars": true,
+    "tail_lines_on_error": 80
+  },
+  "object_preprocess": {
+    "threshold": 0.03,
+    "max_convex_hull": 32,
+    "mcts_iterations": 200,
+    "resolution": 2000,
+    "mesh_scale": 0.01,
+    "validate": true
+  },
+  "retarget": {
+    "stream_chunk_frames": 300
+  }
+}

@@ -39,6 +39,7 @@ from humanoid_retarget_pipeline import (  # noqa: E402
     train_correspondence,
     visualize_result,
 )
+from hiphi_layout import resolve_hiphi_objects  # noqa: E402
 
 
 DEFAULTS_CONFIG = ROOT / "humanoid_retarget_defaults_hsi_hoi_standard.json"
@@ -57,13 +58,25 @@ def parse_args():
         default="all",
         help="prepare only exports the HSI/HOI sequence and temporary config.",
     )
-    parser.add_argument("--data", type=Path, default=None, help="OmniContact/OMOMO root, GRAIL root, or one sequence source.")
+    parser.add_argument("--data", type=Path, default=None, help="HiPHI/OmniContact/OMOMO root, GRAIL root, or one sequence source.")
     parser.add_argument("--seq-key", type=str, default=None, help="Sequence key, e.g. sofa006, sub9_vacuum_054, or a GRAIL recon stem.")
     parser.add_argument("--out", type=Path, default=None, help="Override retarget output .npz.")
     parser.add_argument("--start", type=int, default=None)
     parser.add_argument("--end", type=int, default=None)
     parser.add_argument("--stride", type=int, default=None)
     parser.add_argument("--max-frames", type=int, default=None)
+    parser.add_argument(
+        "--stream-chunk-frames",
+        type=int,
+        default=None,
+        help="Process source geometry and HOI contact data in bounded frame chunks.",
+    )
+    parser.add_argument(
+        "--work-dir",
+        type=Path,
+        default=None,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--force-build", action="store_true")
     parser.add_argument("--force-train", action="store_true")
     parser.add_argument("--force-retarget", action="store_true")
@@ -138,6 +151,8 @@ def hsi_config(config: dict[str, Any]) -> dict[str, Any]:
 
 def is_hsi_hoi_sequence_dir(path: Path) -> bool:
     path = Path(path)
+    if path.is_dir() and (path / "motion_actor_smplx.npz").is_file():
+        return True
     has_pose = (path / "poses.npy").exists() or (path / "smpl_pose_axis_angle.npy").exists()
     has_trans = (path / "transl.npy").exists() or (path / "trans.npy").exists()
     return bool(path.is_dir() and has_pose and has_trans and (path / "betas.npy").exists())
@@ -241,11 +256,21 @@ def source_dataset_kind(seq_dir: Path) -> str:
         return "omomo"
     if "samp" in parts:
         return "samp"
+    metadata_path = Path(seq_dir) / "metadata.json"
+    if "hiphi" in parts or metadata_path.is_file():
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except Exception:
+            metadata = {}
+        if "hiphi" in parts or str(metadata.get("dataset", "")).lower() == "hiphi":
+            return "hiphi"
     return "hsi_hoi"
 
 
 def source_format_for_sequence(seq_dir: Path) -> str:
     kind = source_dataset_kind(seq_dir)
+    if kind == "hiphi":
+        return "hiphi_smplx"
     return f"{kind}_hsi_hoi_smplx" if kind in {"samp", "omomo", "grail"} else "hsi_hoi_smplx"
 
 
@@ -259,7 +284,8 @@ def resolve_samp_sequence(config: dict[str, Any], data_override: Path | None, se
 
     seq_key = seq_key_override if seq_key_override is not None else motion.get("seq_key", "")
     if is_grail_sequence(data_path):
-        return str(seq_key or data_path.stem), data_path.resolve()
+        selected_key = seq_key_override or (data_path.stem if data_override is not None else seq_key or data_path.stem)
+        return str(selected_key), data_path.resolve()
     if is_grail_root(data_path):
         if not seq_key:
             raise ValueError(f"Set motion.seq_key or --seq-key for GRAIL root: {data_path}")
@@ -269,7 +295,8 @@ def resolve_samp_sequence(config: dict[str, Any], data_override: Path | None, se
         sample = sample_sequence_names(data_path)
         raise FileNotFoundError(f"GRAIL sequence {seq_key!r} not found under {data_path / 'recon'}. First sequences: {sample}")
     if is_hsi_hoi_sequence_dir(data_path):
-        return str(seq_key or data_path.name), data_path.resolve()
+        selected_key = seq_key_override or (data_path.name if data_override is not None else seq_key or data_path.name)
+        return str(selected_key), data_path.resolve()
     if not seq_key:
         raise ValueError(f"Set motion.seq_key or --seq-key when motion.data is a sequence root: {data_path}")
 
@@ -304,6 +331,42 @@ def load_samp_motion(seq_dir: Path) -> dict[str, Any]:
             "human_scale": float(np.asarray(human.get("scale", 1.0), dtype=np.float32).reshape(-1)[0]),
             "human_scale_mode": "local",
         }
+    packed_motion_path = seq_dir / "motion_actor_smplx.npz"
+    if packed_motion_path.is_file() and not (seq_dir / "poses.npy").exists() and not (seq_dir / "smpl_pose_axis_angle.npy").exists():
+        with np.load(packed_motion_path, allow_pickle=True) as packed:
+            pose_key = "poses" if "poses" in packed.files else "smpl_pose_axis_angle"
+            trans_key = "transl" if "transl" in packed.files else "trans"
+            raw_poses = np.asarray(packed[pose_key], dtype=np.float32)
+            poses = raw_poses.reshape(raw_poses.shape[0], -1)
+            trans = np.asarray(packed[trans_key], dtype=np.float32).reshape(len(poses), 3)
+            betas = np.asarray(packed["betas"], dtype=np.float32).reshape(-1)
+
+            def packed_scalar(name: str, default: Any):
+                if name not in packed.files:
+                    return default
+                value = np.asarray(packed[name])
+                return value.item() if value.shape == () else value.reshape(-1)[0]
+
+            gender = str(packed_scalar("gender", "neutral")).lower()
+            model_type = str(packed_scalar("model_type", "smplx")).lower()
+            fps = float(packed_scalar("mocap_framerate", packed_scalar("fps", 30.0)))
+            output_up = str(packed_scalar("output_up", packed_scalar("coordinate_up", "y"))).lower()
+        if model_type != "smplx":
+            raise ValueError(f"HiPHI motion expects SMPL-X data, got model_type={model_type!r}: {packed_motion_path}")
+        if poses.shape[0] != trans.shape[0]:
+            raise ValueError(f"Frame count mismatch in {packed_motion_path}: poses={poses.shape}, trans={trans.shape}")
+        return {
+            "poses": poses,
+            "trans": trans,
+            "betas": betas,
+            "gender": gender,
+            "model_type": model_type,
+            "fps": fps,
+            "output_up": output_up,
+            "human_scale": 1.0,
+            "human_scale_mode": "off",
+        }
+
     pose_path = seq_dir / "poses.npy"
     if not pose_path.exists():
         pose_path = seq_dir / "smpl_pose_axis_angle.npy"
@@ -337,6 +400,7 @@ def load_samp_motion(seq_dir: Path) -> dict[str, Any]:
 
 
 def discover_samp_objects(seq_dir: Path) -> list[dict[str, str]]:
+    seq_dir = Path(seq_dir).resolve()
     objects = []
     stems = sorted({p.stem for p in seq_dir.glob("*.xml")} | {p.stem for p in seq_dir.glob("*.obj")})
     for stem in stems:
@@ -353,7 +417,80 @@ def discover_samp_objects(seq_dir: Path) -> list[dict[str, str]]:
                 "prop": str(prop_path),
             }
         )
-    return objects
+    if objects:
+        return objects
+    if source_dataset_kind(seq_dir) == "hiphi":
+        return resolve_hiphi_objects(seq_dir)
+    return []
+
+
+def hiphi_collision_asset_ready(item: dict[str, str]) -> bool:
+    obj_path = Path(item.get("obj", ""))
+    xml_path = Path(item.get("xml", ""))
+    collision_dir = xml_path.parent / "object_collision" / obj_path.stem
+    if not xml_path.is_file() or xml_path.stat().st_size == 0:
+        return False
+    return any(
+        path.is_file() and path.stat().st_size > 0
+        for path in collision_dir.glob("collision_*.obj")
+    )
+
+
+def validate_source_objects(
+    seq_dir: Path,
+    objects: list[dict[str, str]],
+    config: dict[str, Any],
+    *,
+    dry_run: bool = False,
+) -> None:
+    for item in objects:
+        obj_path = Path(item.get("obj", ""))
+        xml_path = Path(item.get("xml", ""))
+        prop_path = Path(item.get("prop", ""))
+        if not obj_path.is_file() and not xml_path.is_file():
+            raise FileNotFoundError(
+                f"HiPHI object mesh not found for {item.get('name', '<unnamed>')}: {obj_path}"
+            )
+        if not prop_path.is_file():
+            raise FileNotFoundError(
+                f"HiPHI object trajectory not found for {item.get('name', '<unnamed>')}: {prop_path}"
+            )
+
+    solver = section(config, "solver")
+    needs_collision_xml = bool(solver.get("robot_object_hard_constraint", False)) or float(
+        solver.get("robot_object_penetration_soft_cost", 0.0)
+    ) > 0.0
+    if source_dataset_kind(seq_dir) != "hiphi" or not needs_collision_xml:
+        return
+    for item in objects:
+        if hiphi_collision_asset_ready(item):
+            print(f"[HiPHI] reuse object collision asset: {item.get('xml', '')}")
+            continue
+        obj_path = Path(item.get("obj", ""))
+        if not obj_path.is_file():
+            raise FileNotFoundError(
+                f"HiPHI object OBJ is required for automatic convex decomposition: {obj_path}"
+            )
+        command = [
+            sys.executable,
+            str(SCRIPTS / "prepare_hiphi_object_mjcf.py"),
+            "--data",
+            str(Path(seq_dir).resolve()),
+            "--object-id",
+            str(item.get("name", "")),
+        ]
+        if dry_run:
+            print("[HiPHI] dry-run object preprocessing: " + " ".join(command))
+            continue
+        print(
+            f"[HiPHI] object collision asset missing; preparing automatically: {obj_path.name}"
+        )
+        subprocess.run(command, cwd=ROOT, check=True)
+        if not hiphi_collision_asset_ready(item):
+            raise RuntimeError(
+                f"HiPHI object preprocessing completed without a usable collision asset: "
+                f"{item.get('xml', '')}"
+            )
 
 
 def grail_root_for_sequence(sequence_path: Path) -> Path:
@@ -671,6 +808,32 @@ def configure_single_smpl_template(config: dict[str, Any], seq_key: str, seq_dir
     model_type = str(motion["model_type"]).lower()
     gender = str(motion["gender"]).lower()
     model_dir = config.get(f"{model_type}_model_dir", config.get("smplx_model_dir", "smpl"))
+    if bool(corr.get("reuse_across_smplx_betas", False)):
+        template = section(config, "smpl_template")
+        shared_template = section(corr, "shared_smplx_template")
+        if model_type != "smplx" or str(template.get("type", "smplx")).lower() != "smplx":
+            raise ValueError("correspondence.reuse_across_smplx_betas currently supports SMPL-X only")
+        if str(template.get("source", "motion")).lower() != "motion":
+            raise ValueError(
+                "Shared SMPL-X correspondence keeps smpl_template.source=motion so scale and centering "
+                "come from each sequence"
+            )
+        if not corr.get("slots"):
+            raise ValueError("Shared SMPL-X correspondence requires correspondence.slots")
+        configured_name = str(shared_template.get("name", ""))
+        slot_name = str(corr.get("smpl_name", "auto"))
+        if not configured_name or slot_name != configured_name:
+            raise ValueError(
+                f"Shared correspondence slot/template mismatch: smpl_name={slot_name!r}, "
+                f"shared_template={configured_name!r}"
+            )
+        if shared_template.get("betas") is None:
+            raise ValueError("Shared SMPL-X correspondence requires shared_smplx_template.betas")
+        print(
+            f"[HSIHOI] reuse shared SMPL-X correspondence template={configured_name} "
+            f"for sequence={seq_key} motion_gender={gender}"
+        )
+        return
     dataset["smpl_models"] = [
         {
             "type": model_type,
@@ -719,10 +882,21 @@ def make_runtime_config(
     configure_single_smpl_template(config, seq_key, seq_dir)
     normalize_solver_config(config)
     source_motion = load_samp_motion(seq_dir)
+    source_objects = discover_samp_objects(object_dir or seq_dir)
+    if source_dataset_kind(seq_dir) == "hiphi" and not source_objects:
+        non_interaction = section(section(config, "hiphi"), "non_interaction_overrides")
+        config = deep_merge(config, non_interaction)
+        print(f"[HiPHI] plain motion sequence={seq_key}: use non-interaction solver settings")
+    validate_source_objects(seq_dir, source_objects, config, dry_run=args.dry_run)
     object_cfg = config.setdefault("hsi_hoi", {}).setdefault("object", {})
     object_cfg["output_up"] = source_motion["output_up"]
+    config["hsi_hoi"]["source_objects"] = source_objects
 
     config.setdefault("retarget", {})
+    if args.stream_chunk_frames is not None:
+        if int(args.stream_chunk_frames) < 0:
+            raise ValueError("--stream-chunk-frames must be non-negative")
+        config["retarget"]["stream_chunk_frames"] = int(args.stream_chunk_frames)
     if args.out is not None:
         config["retarget"]["out"] = str(args.out)
     elif not config["retarget"].get("out"):
@@ -876,6 +1050,61 @@ def retarget_hsi_motion(
     return retarget_motion(config, slots_path, force=True if result_path.exists() and not force else force, dry_run=dry_run)
 
 
+def ensure_shared_smplx_correspondence(
+    runtime_config: dict[str, Any],
+    *,
+    force_build: bool,
+    force_train: bool,
+    dry_run: bool,
+) -> Path:
+    slots_path = slots_out(runtime_config)
+    compatible = slots_path.exists() and correspondence_slots_compatible(
+        slots_path,
+        runtime_config,
+    )
+    if compatible and not force_build and not force_train:
+        print(f"[HiPHI] reuse shared beta-zero correspondence: {slots_path}")
+        return slots_path
+
+    shared_config_value = section(runtime_config, "correspondence").get("shared_config")
+    if not shared_config_value:
+        raise ValueError(
+            "HiPHI shared correspondence is missing correspondence.shared_config"
+        )
+    shared_config_path = resolve_path(shared_config_value, runtime_config)
+    if shared_config_path is None or not shared_config_path.is_file():
+        raise FileNotFoundError(
+            f"HiPHI shared-correspondence config not found: {shared_config_path}"
+        )
+    training_config = load_config(shared_config_path)
+    training_slots = slots_out(training_config)
+    if training_slots.resolve() != slots_path.resolve():
+        raise ValueError(
+            "HiPHI shared-correspondence config does not target the runtime slots: "
+            f"training={training_slots}, runtime={slots_path}"
+        )
+    print(f"[HiPHI] prepare shared beta-zero correspondence: {slots_path}")
+    dataset_path = build_correspondence_dataset(
+        training_config,
+        force=force_build,
+        dry_run=dry_run,
+    )
+    slots_path = train_correspondence(
+        training_config,
+        dataset_path,
+        force=force_train or (training_slots.exists() and not compatible),
+        dry_run=dry_run,
+    )
+    if not dry_run and (
+        not slots_path.exists()
+        or not correspondence_slots_compatible(slots_path, runtime_config)
+    ):
+        raise RuntimeError(
+            f"Shared beta-zero correspondence is missing or incompatible after training: {slots_path}"
+        )
+    return slots_path
+
+
 def run_pipeline(args, work_dir: Path):
     base_config = load_hsi_hoi_config(args.config, args.defaults)
     seq_key, seq_dir = resolve_samp_sequence(base_config, args.data, args.seq_key)
@@ -912,7 +1141,17 @@ def run_pipeline(args, work_dir: Path):
     if args.stage == "prepare":
         return
 
-    stages = ["build", "train", "retarget"] if args.stage == "all" else [args.stage]
+    reuse_shared = bool(section(config, "correspondence").get("reuse_across_smplx_betas", False))
+    if reuse_shared and args.stage in {"build", "train"}:
+        raise ValueError(
+            "HiPHI shared correspondence mode does not train per sequence; "
+            "build/train the standard beta-zero correspondence once with its dedicated config"
+        )
+    if reuse_shared and args.stage == "all":
+        print("[HSIHOI] shared correspondence mode: skip per-sequence build/train")
+        stages = ["retarget"]
+    else:
+        stages = ["build", "train", "retarget"] if args.stage == "all" else [args.stage]
     dataset_path = dataset_out(config)
     slots_path = slots_out(config)
     result_path = retarget_out(config)
@@ -924,7 +1163,22 @@ def run_pipeline(args, work_dir: Path):
             dataset_path = build_correspondence_dataset(config, force=args.force_build, dry_run=args.dry_run)
         slots_path = train_correspondence(config, dataset_path, force=args.force_train, dry_run=args.dry_run)
     if "retarget" in stages:
-        if (not slots_path.exists() or not correspondence_slots_compatible(slots_path, config)) and not args.dry_run:
+        slots_compatible = slots_path.exists() and correspondence_slots_compatible(
+            slots_path,
+            config,
+        )
+        if reuse_shared and (
+            args.force_build
+            or args.force_train
+            or not slots_compatible
+        ):
+            slots_path = ensure_shared_smplx_correspondence(
+                config,
+                force_build=args.force_build,
+                force_train=args.force_train,
+                dry_run=args.dry_run,
+            )
+        elif not slots_compatible and not args.dry_run:
             dataset_path = build_correspondence_dataset(config, force=args.force_build, dry_run=args.dry_run)
             slots_path = train_correspondence(config, dataset_path, force=args.force_train, dry_run=args.dry_run)
         result_path = retarget_hsi_motion(
@@ -946,6 +1200,12 @@ def run_pipeline(args, work_dir: Path):
 
 def main():
     args = parse_args()
+    if args.work_dir is not None:
+        work_dir = args.work_dir.resolve()
+        if not args.dry_run:
+            work_dir.mkdir(parents=True, exist_ok=True)
+        run_pipeline(args, work_dir)
+        return
     with tempfile.TemporaryDirectory(prefix="umr_hsi_hoi_", dir="/tmp") as work_dir:
         run_pipeline(args, Path(work_dir))
 
