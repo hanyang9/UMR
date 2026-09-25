@@ -66,7 +66,7 @@ information can be integrated through the same formulation.
 | Motion source | Dataset | Adapter guide |
 | --- | --- | --- |
 | BONES-SEED / SOMA | [BONES-SEED](https://huggingface.co/datasets/bones-studio/seed) | [`sample_data/bones-seed/README.md`](sample_data/bones-seed/README.md) |
-| HiPHI / SMPL-X | [HiPHI](https://noitom-robotics.github.io/hiphi) | [Quick Start](#quick-start) |
+| HiPHI / SMPL-X | [HiPHI](https://noitom-robotics.github.io/hiphi) | [`sample_data/hiphi/README.md`](sample_data/hiphi/README.md) |
 | GRAIL | [NVIDIA GRAIL](https://huggingface.co/datasets/nvidia/PhysicalAI-Robotics-Locomanipulation-GRAIL) | [`sample_data/grail/README.md`](sample_data/grail/README.md) |
 | OmniContact | [Paper and dataset](https://huggingface.co/papers/2606.26201) | [`sample_data/omnicontact/README.md`](sample_data/omnicontact/README.md) |
 | LAFAN1 / SMPL-X | [LAFAN1](https://github.com/ubisoft/ubisoft-laforge-animation-dataset) | [`sample_data/lafan1_smplx/README.md`](sample_data/lafan1_smplx/README.md) |
@@ -74,8 +74,6 @@ information can be integrated through the same formulation.
 | Humanoid Character | [MimicKit](https://github.com/xbpeng/MimicKit) | [`sample_data/humanoid_character/README.md`](sample_data/humanoid_character/README.md) |
 | AdaPT body+racket | [AdaPT](https://humanoidtennis.github.io/AdaPT/) | [`sample_data/adapt/README.md`](sample_data/adapt/README.md) |
 | NR FBX/BVH | FBX/BVH motion | [`sample_data/nr/README.md`](sample_data/nr/README.md) |
-
-> **OmniContact support.** An internal development version of UMR was used to produce the Unitree G1 retargeting data released by [OmniContact](https://omnicontact.github.io/). OmniContact provides the source motions as BVH, while UMR uses SMPL-X inputs. The internal BVH-to-SMPL-X converter is not included in this repository, so the current release does not directly support these BVH files.
 
 For LAFAN1, use [`lafan_to_smplx`](https://github.com/jaraujo98/lafan_to_smplx)
 to convert BVH motion to SMPL-X before retargeting. Each adapter guide documents
@@ -174,33 +172,9 @@ python scripts/humanoid_retarget_pipeline_hiphi.py \
   --data sample_data/hiphi/data/Getting_up/get_up/Getting_up-get_up_0004
 ```
 
-HiPHI data is not distributed with UMR. After converting the motions to
-SMPL-X, place the complete dataset under:
-
-```text
-sample_data/hiphi/
-├── object_meshes/
-│   └── <object_id>.obj
-└── data/<frame>/<lu>/<motion_id>/
-    ├── motion_actor_smplx.npz
-    ├── metadata.json
-    └── object_tracks/<object_id>.csv  # HOI only
-```
-
-HiPHI may use different SMPL-X beta parameters for different actors or motion
-captures. The pipeline transfers the shared beta-zero correspondence to each
-sequence-specific SMPL-X shape through fixed face and barycentric binding. It
-automatically trains this correspondence when it is missing and reuses it for
-subsequent motions instead of retraining for every motion.
-
-HiPHI provides interaction objects as visual OBJ meshes; no manual collision
-preprocessing command is required. Before either a single HOI run or a batch
-run, UMR checks for a same-name MJCF and cached convex collision parts under
-`object_meshes/object_collision/<object_id>/`. If they are missing, UMR
-automatically runs CoACD through the dependencies in `requirements-umr.txt`.
-The original OBJ remains the visual geometry, while the generated convex parts
-are used only for MuJoCo collision constraints. These generated assets stay
-beside the HiPHI object meshes and are reused by subsequent motions.
+See the [HiPHI adapter guide](sample_data/hiphi/README.md) for the converted
+dataset layout, shared correspondence behavior, interaction objects, and batch
+usage.
 
 ## Visualize a Result
 

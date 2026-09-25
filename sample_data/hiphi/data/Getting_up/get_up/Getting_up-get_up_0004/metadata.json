@@ -1,0 +1,25 @@
+{
+  "actor_id": "A103",
+  "actor_metadata": {
+    "gender": "female",
+    "height_cm": 163,
+    "weight_kg": 55
+  },
+  "dataset": "HiPHI",
+  "duration_sec": 60.754948,
+  "fps": 90.0009,
+  "frame": "Getting_up",
+  "frame_count": 5468,
+  "frame_lu": "Getting_up-get_up",
+  "is_hoi": false,
+  "lu": "get_up",
+  "mirrored": false,
+  "motion_id": "Getting_up-get_up_0004",
+  "objects": [],
+  "text_annotation": "From lying on your stomach, slowly push up and come to standing, then return to lying on your stomach, repeatedly.",
+  "smplx_variant": {
+    "beta_id": "A103_original",
+    "augmentation": "none",
+    "source_layout": "single_beta_original"
+  }
+}

@@ -37,5 +37,13 @@ sample_data/omomo/train_and_test/
 sample_data/omomo/train/
 sample_data/omomo/test/
 sample_data/omomo/object_mjcf/
-sample_data/hiphi/data/
+sample_data/hiphi/data/*
+!sample_data/hiphi/data/Getting_up/
+sample_data/hiphi/data/Getting_up/*
+!sample_data/hiphi/data/Getting_up/get_up/
+sample_data/hiphi/data/Getting_up/get_up/*
+!sample_data/hiphi/data/Getting_up/get_up/Getting_up-get_up_0004/
+sample_data/hiphi/data/Getting_up/get_up/Getting_up-get_up_0004/*
+!sample_data/hiphi/data/Getting_up/get_up/Getting_up-get_up_0004/metadata.json
+!sample_data/hiphi/data/Getting_up/get_up/Getting_up-get_up_0004/motion_actor_smplx.npz
 sample_data/hiphi/object_meshes/
