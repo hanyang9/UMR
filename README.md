@@ -56,7 +56,9 @@ and target robot.
 ## News & Updates
 
 - **September 2026:** Added support for the
-  [HiPHI dataset](https://noitom-robotics.github.io/hiphi).
+  [HiPHI dataset](https://noitom-robotics.github.io/hiphi). Visit
+  [hiphi2smplx](https://github.com/noitom-robotics/hiphi2smplx) to convert
+  HiPHI BVH motions to SMPL-X.
 
 ## Supported Motion Sources
 
