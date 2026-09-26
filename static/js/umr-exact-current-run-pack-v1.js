@@ -75,6 +75,31 @@ function frameBasis(vertices, a, b, c) {
   return { e1, e2, normal };
 }
 
+function surfacePointsFromBinding(vertices, faces, binding) {
+  const slotCount = Number(binding.faceIds.length);
+  const output = new Float32Array(slotCount * 3);
+  if (binding.bary.length !== slotCount * 3) {
+    throw new Error("Shared SMPL-X surface binding has an invalid barycentric shape.");
+  }
+  for (let slot = 0; slot < slotCount; slot += 1) {
+    const face = Number(binding.faceIds[slot]);
+    const a = Number(faces[face * 3]);
+    const b = Number(faces[face * 3 + 1]);
+    const c = Number(faces[face * 3 + 2]);
+    const bo = slot * 3;
+    const w0 = Number(binding.bary[bo]);
+    const w1 = Number(binding.bary[bo + 1]);
+    const w2 = Number(binding.bary[bo + 2]);
+    for (let axis = 0; axis < 3; axis += 1) {
+      output[bo + axis] =
+        Number(vertices[a * 3 + axis]) * w0 +
+        Number(vertices[b * 3 + axis]) * w1 +
+        Number(vertices[c * 3 + axis]) * w2;
+    }
+  }
+  return output;
+}
+
 async function bindDynamicReference(sourcePack, source, trainedSourceSlots, robotNormals, onProgress, signal) {
   throwIfAborted(signal);
   const manifest = sourcePack.manifest;
@@ -83,11 +108,32 @@ async function bindDynamicReference(sourcePack, source, trainedSourceSlots, robo
   const verticesPerFrame = Number(sourcePack.assets.motion_vertices_unit.shape[1]);
   const faces = source.faces;
   const templateVertices = source.retargetVertices || source.vertices;
+  const nearestVertexK = Number(manifest.solver.bind_nearest_vertex_k || 24);
+  const transferMode = String(manifest.correspondence_transfer?.mode || "direct");
+  let transferredSlots = trainedSourceSlots;
+  let sharedBinding = null;
+  if (transferMode === "shared_smplx_fixed_face_bary") {
+    if (!source.retargetVertices) {
+      throw new Error("Shared SMPL-X correspondence requires a sequence-specific retarget template.");
+    }
+    if (source.vertices.length !== source.retargetVertices.length) {
+      throw new Error("Shared and sequence-specific SMPL-X templates do not share topology.");
+    }
+    // Match native humanoid_retarget_pipeline_hiphi: bind the learned slots to
+    // the standard zero-betas template once, transfer those fixed face IDs and
+    // barycentric coordinates to the sequence shape, then bind the transferred
+    // points to that sequence template for dynamic motion playback.
+    sharedBinding = bindPointsToMesh(
+      trainedSourceSlots, source.vertices, faces, nearestVertexK
+    );
+    transferredSlots = surfacePointsFromBinding(
+      source.retargetVertices, faces, sharedBinding
+    );
+  } else if (transferMode !== "direct") {
+    throw new Error(`Unsupported correspondence transfer mode ${transferMode}.`);
+  }
   const binding = bindPointsToMesh(
-    trainedSourceSlots,
-    templateVertices,
-    faces,
-    Number(manifest.solver.bind_nearest_vertex_k || 24)
+    transferredSlots, templateVertices, faces, nearestVertexK
   );
   const sourcePoints = new Float32Array(frames * slotCount * 3);
   const sourceNormals = new Float32Array(sourcePoints.length);
@@ -148,7 +194,7 @@ async function bindDynamicReference(sourcePack, source, trainedSourceSlots, robo
       throwIfAborted(signal);
     }
   }
-  return { binding, sourcePoints, sourceNormals, normalTargets };
+  return { binding, sharedBinding, transferredSlots, sourcePoints, sourceNormals, normalTargets };
 }
 
 function relabelUpperArms(partIds, closestPoints, segments) {
@@ -229,7 +275,10 @@ function applyReferenceGround(manifest, sourcePoints, rootPositions) {
     for (let offset = 2; offset < sourcePoints.length; offset += 3) {
       groundUnit = Math.min(groundUnit, Number(sourcePoints[offset]));
     }
-    const matUnit = Number(manifest.mat_height_m || 0) / Number(manifest.normalization_scale);
+    const retargetScale = Number(
+      manifest.retarget_normalization_scale ?? manifest.normalization_scale
+    );
+    const matUnit = Number(manifest.mat_height_m || 0) / retargetScale;
     if (groundUnit >= matUnit) groundUnit -= matUnit;
     for (let offset = 2; offset < sourcePoints.length; offset += 3) sourcePoints[offset] -= groundUnit;
   } else if (!["none", "raw", "off", "false", "0"].includes(String(manifest.source_ground_align))) {

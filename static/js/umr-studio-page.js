@@ -194,7 +194,7 @@ async function mountStandaloneStudio() {
     const template = sourceDocument.querySelector("#umr-studio-template");
     if (!template) throw new Error("The Studio layout template is missing.");
     mount.replaceChildren(template.content.cloneNode(true));
-    await import("./mujoco-viewer.js?v=20260905-model-browser-collapse-v1");
+    await import("./mujoco-viewer.js?v=20260926-hiphi-shared-beta0-v1");
     setupRobotDragDemonstration();
   } catch (error) {
     console.error("Could not initialize the standalone UMR Studio", error);

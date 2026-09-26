@@ -8,7 +8,7 @@ import {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const STATIC_REFERENCE_ROOT = new URL("../assets/reference_motions/", import.meta.url);
-const STATIC_REFERENCE_REVISION = "20260905-omnicontact-642-viewer-140-480-v1";
+const STATIC_REFERENCE_REVISION = "20260921-hiphi-library-v1";
 
 const staticMotionUrl = (motionId) => {
   const url = new URL(encodeURIComponent(String(motionId)) + "/motion.json", STATIC_REFERENCE_ROOT);
@@ -952,11 +952,25 @@ export class ReferenceMotionLibrary {
     this.container = container;
     this.selectionInput = selectionInput;
     this.onMotionChange = onMotionChange;
+    this.sidebar = this.container.closest(".mj-motion-sidebar");
+    this.libraryButtons = [...(this.sidebar?.querySelectorAll("[data-reference-library]") || [])];
+    this.libraryContexts = [...(this.sidebar?.querySelectorAll("[data-library-context]") || [])];
     this.module = null;
     this.entries = new Map();
+    this.libraryEntries = new Map();
+    this.activeByLibrary = new Map();
+    this.activeLibraryId = "umr";
     this.activeId = "";
     this.locked = false;
+    this.initialized = false;
     this.synchronizedPlaybackToggle = null;
+
+    this.libraryButtons.forEach((button) => {
+      button.disabled = true;
+      button.addEventListener("click", () => {
+        this.activateLibrary(button.dataset.referenceLibrary, { notify: true });
+      });
+    });
   }
 
   get motion() {
@@ -965,25 +979,51 @@ export class ReferenceMotionLibrary {
 
   async initialize(module, preferredId = "") {
     this.module = module;
-    const payload = await fetchJsonWithStaticFallback(
-      "/api/motions",
-      new URL("catalog.json", STATIC_REFERENCE_ROOT)
-    );
-    if (!Array.isArray(payload.motions) || !payload.motions.length) {
-      throw new Error(payload.error || "No target motions are available.");
+    const catalogs = [
+      {
+        id: "umr",
+        api: "/api/motions",
+        url: new URL("catalog.json", STATIC_REFERENCE_ROOT)
+      },
+      {
+        id: "hiphi",
+        api: "/api/motions?library=hiphi",
+        url: new URL("hiphi_catalog.json", STATIC_REFERENCE_ROOT)
+      }
+    ];
+    const loaded = await Promise.all(catalogs.map(async (catalog) => ({
+      ...catalog,
+      payload: await fetchJsonWithStaticFallback(catalog.api, catalog.url)
+    })));
+    if (!loaded.some((catalog) => Array.isArray(catalog.payload.motions) && catalog.payload.motions.length)) {
+      throw new Error("No target motions are available.");
     }
 
     this.container.replaceChildren();
     this.selectionInput.replaceChildren();
-    payload.motions.forEach((motion) => this.createEntry(motion));
-    const selected = this.entries.has(preferredId) ? preferredId : payload.motions[0].id;
+    loaded.forEach((catalog) => {
+      const motions = Array.isArray(catalog.payload.motions) ? catalog.payload.motions : [];
+      this.libraryEntries.set(catalog.id, []);
+      motions.forEach((motion) => this.createEntry(motion, catalog.id));
+    });
+
+    const preferredEntry = this.entries.get(String(preferredId));
+    const initialLibrary = preferredEntry?.libraryId || "umr";
+    const initialEntries = this.libraryEntries.get(initialLibrary) || [];
+    const selected = preferredEntry?.metadata.id || initialEntries[0];
+    if (!selected) throw new Error("The default reference library is empty.");
+
+    this.initialized = true;
+    this.activeLibraryId = initialLibrary;
+    this.syncLibraryChrome();
     this.activate(selected, { notify: false });
+    this.setLocked(false);
     const selectedLoad = this.loadEntry(selected);
-    this.loadRemaining(selected);
+    selectedLoad.then(() => this.loadRemaining(selected, initialLibrary));
     await selectedLoad;
   }
 
-  createEntry(metadata) {
+  createEntry(metadata, libraryId) {
     const motionId = String(metadata.id);
     const option = document.createElement("option");
     option.value = motionId;
@@ -993,6 +1033,7 @@ export class ReferenceMotionLibrary {
     const card = document.createElement("article");
     card.className = "mj-motion-card";
     card.dataset.motionId = motionId;
+    card.dataset.libraryId = libraryId;
     card.tabIndex = 0;
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", "Select " + option.textContent);
@@ -1019,7 +1060,7 @@ export class ReferenceMotionLibrary {
 
     const status = document.createElement("small");
     status.className = "mj-motion-card-status";
-    status.textContent = "Loading preview…";
+    status.textContent = "Load preview on selection";
     card.append(title, viewport, status);
     this.container.append(card);
 
@@ -1030,8 +1071,15 @@ export class ReferenceMotionLibrary {
       onActivate: () => this.activate(motionId, { notify: true }),
       onToggle: () => this.handleSceneToggle(motionId)
     });
-    const entry = { metadata, card, scene, loadPromise: null };
+    const entry = {
+      metadata: { ...metadata, library_id: libraryId },
+      libraryId,
+      card,
+      scene,
+      loadPromise: null
+    };
     this.entries.set(motionId, entry);
+    this.libraryEntries.get(libraryId)?.push(motionId);
 
     card.addEventListener("pointerdown", (event) => {
       if (event.target.closest(".mj-motion-card-play")) return;
@@ -1044,6 +1092,41 @@ export class ReferenceMotionLibrary {
     });
   }
 
+  syncLibraryChrome() {
+    if (this.sidebar) this.sidebar.dataset.referenceLibrary = this.activeLibraryId;
+    this.libraryButtons.forEach((button) => {
+      const active = button.dataset.referenceLibrary === this.activeLibraryId;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    this.libraryContexts.forEach((context) => {
+      context.hidden = context.dataset.libraryContext !== this.activeLibraryId;
+    });
+    this.entries.forEach((entry) => {
+      const visible = entry.libraryId === this.activeLibraryId;
+      entry.card.hidden = !visible;
+      entry.card.tabIndex = visible && !this.locked ? 0 : -1;
+      if (!visible) entry.scene.stopPreview();
+    });
+  }
+
+  activateLibrary(libraryId, { notify = true } = {}) {
+    const id = String(libraryId || "");
+    if ((this.locked && notify) || !this.libraryEntries.has(id)) return;
+    const candidates = this.libraryEntries.get(id) || [];
+    if (!candidates.length) return;
+    const changed = this.activeLibraryId !== id;
+    this.activeLibraryId = id;
+    this.syncLibraryChrome();
+    const selected = this.activeByLibrary.get(id) || candidates[0];
+    this.activate(selected, { notify: notify && changed });
+    const selectedLoad = this.loadEntry(selected);
+    selectedLoad.then(() => {
+      if (this.activeLibraryId === id) this.entries.get(selected)?.scene.resize();
+      this.loadRemaining(selected, id);
+    }).catch(() => {});
+  }
+
   async loadEntry(motionId) {
     const entry = this.entries.get(String(motionId));
     if (!entry) throw new Error("Unknown target motion: " + motionId);
@@ -1051,7 +1134,7 @@ export class ReferenceMotionLibrary {
     if (!entry.loadPromise) {
       entry.loadPromise = entry.scene.initialize(this.module, String(motionId))
         .then(() => {
-          entry.scene.resize();
+          if (entry.libraryId === this.activeLibraryId) entry.scene.resize();
           entry.scene.button.disabled = this.locked;
           return entry.scene.motion;
         })
@@ -1065,16 +1148,13 @@ export class ReferenceMotionLibrary {
     return entry.loadPromise;
   }
 
-  loadRemaining(selectedId) {
-    const loads = [];
-    for (const [motionId] of this.entries) {
-      if (motionId === selectedId) continue;
-      loads.push(
-        this.loadEntry(motionId).catch((error) => {
-          console.warn("Could not prepare target motion preview.", motionId, error);
-        })
-      );
-    }
+  loadRemaining(selectedId, libraryId = this.activeLibraryId) {
+    const motionIds = this.libraryEntries.get(String(libraryId)) || [];
+    const loads = motionIds
+      .filter((motionId) => motionId !== selectedId)
+      .map((motionId) => this.loadEntry(motionId).catch((error) => {
+        console.warn("Could not prepare target motion preview.", motionId, error);
+      }));
     return Promise.allSettled(loads);
   }
 
@@ -1083,8 +1163,13 @@ export class ReferenceMotionLibrary {
     const id = String(motionId);
     const entry = this.entries.get(id);
     if (!entry) return;
+    if (entry.libraryId !== this.activeLibraryId) {
+      this.activeLibraryId = entry.libraryId;
+      this.syncLibraryChrome();
+    }
     const changed = this.activeId !== id;
     this.activeId = id;
+    this.activeByLibrary.set(entry.libraryId, id);
     this.selectionInput.value = id;
     for (const [otherId, other] of this.entries) {
       other.card.classList.toggle("is-active", otherId === id);
@@ -1104,6 +1189,12 @@ export class ReferenceMotionLibrary {
 
   async ensureMotion(motionId) {
     const id = String(motionId);
+    const entry = this.entries.get(id);
+    if (!entry) throw new Error("Unknown target motion: " + id);
+    if (entry.libraryId !== this.activeLibraryId) {
+      this.activeLibraryId = entry.libraryId;
+      this.syncLibraryChrome();
+    }
     await this.loadEntry(id);
     this.activate(id, { notify: false });
   }
@@ -1140,9 +1231,12 @@ export class ReferenceMotionLibrary {
   setLocked(locked) {
     this.locked = Boolean(locked);
     this.container.classList.toggle("is-locked", this.locked);
+    this.libraryButtons.forEach((button) => {
+      button.disabled = this.locked || !this.initialized;
+    });
     this.entries.forEach((entry) => {
       entry.scene.button.disabled = this.locked || !entry.scene.motion;
-      entry.card.tabIndex = this.locked ? -1 : 0;
+      entry.card.tabIndex = !this.locked && entry.libraryId === this.activeLibraryId ? 0 : -1;
     });
   }
 
@@ -1163,20 +1257,29 @@ export class ReferenceMotionLibrary {
     }
   }
 
+  forEachActiveLibrary(callback) {
+    const ids = this.libraryEntries.get(this.activeLibraryId) || [];
+    ids.forEach((id) => {
+      const entry = this.entries.get(id);
+      if (entry) callback(entry);
+    });
+  }
+
   update(timestamp) {
-    this.entries.forEach((entry) => entry.scene.update(timestamp));
+    this.forEachActiveLibrary((entry) => entry.scene.update(timestamp));
   }
 
   render() {
-    this.entries.forEach((entry) => entry.scene.render());
+    this.forEachActiveLibrary((entry) => entry.scene.render());
   }
 
   resize() {
-    this.entries.forEach((entry) => entry.scene.resize());
+    this.forEachActiveLibrary((entry) => entry.scene.resize());
   }
 
   dispose() {
     this.entries.forEach((entry) => entry.scene.dispose());
     this.entries.clear();
+    this.libraryEntries.clear();
   }
 }

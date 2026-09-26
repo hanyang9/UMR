@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./static/css/bulma.min.css">
-  <link rel="stylesheet" href="./static/css/index.css?v=20260906-author-list-v2">
+  <link rel="stylesheet" href="./static/css/index.css?v=20260921-hiphi-library-v1">
   <script defer src="./static/js/fontawesome.all.min.js"></script>
 </head>
 <body>
@@ -206,6 +206,27 @@
   <aside class="mj-motion-sidebar" aria-label="Target motion browser">
     <div class="mj-motion-sidebar-heading">
       <strong>Reference library</strong>
+    </div>
+    <div class="mj-reference-library-switcher" role="tablist" aria-label="Reference dataset">
+      <button class="mj-reference-library-tab is-active" type="button" role="tab" aria-selected="true" data-reference-library="umr">
+        <span class="mj-reference-library-mark mj-reference-library-mark-umr" aria-hidden="true">U</span>
+        <span>UMR</span>
+      </button>
+      <button class="mj-reference-library-tab mj-reference-library-tab-hiphi" type="button" role="tab" aria-selected="false" data-reference-library="hiphi">
+        <img src="./static/assets/hiphi-icon.svg" alt="" aria-hidden="true">
+        <span>HiPHI</span>
+      </button>
+    </div>
+    <div class="mj-reference-library-context" data-library-context="umr">
+      <span>Curated motion sources</span>
+    </div>
+    <div class="mj-reference-library-context mj-reference-library-context-hiphi" data-library-context="hiphi" hidden>
+      <span>Noitom Robotics · HiPHI</span>
+      <span class="mj-reference-library-links">
+        <a href="https://huggingface.co/datasets/noitomrobotics/HiPHI" target="_blank" rel="noopener noreferrer" aria-label="HiPHI dataset" title="HiPHI dataset">🤗</a>
+        <a href="https://noitom-robotics.github.io/hiphi" target="_blank" rel="noopener noreferrer" aria-label="HiPHI project page" title="HiPHI project page">↗</a>
+        <a href="https://hiphi-viewer.modalitynet.com" target="_blank" rel="noopener noreferrer" aria-label="HiPHI online viewer" title="HiPHI online viewer">▻</a>
+      </span>
     </div>
     <select id="mj-motion-source" hidden aria-hidden="true" tabindex="-1"></select>
     <div id="mj-motion-list" class="mj-motion-list" aria-label="Available reference motions">

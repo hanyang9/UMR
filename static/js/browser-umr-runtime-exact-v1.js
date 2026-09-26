@@ -1,14 +1,16 @@
 // Exact, CPU-only UMR pipeline orchestration for static browser deployment.
 
-import { loadExactSourcePack, sourceForCenterRatio } from "./umr-exact-source-pack-v1.js?v=20260905-hoi-642-ground-hard-v2";
+import { loadExactSourcePack, sourceForCenterRatio } from "./umr-exact-source-pack-v1.js?v=20260926-hiphi-shared-beta0-v1";
 import { collectRobotVisualMesh } from "./umr-exact-robot-mesh-v1.js";
 import { sampleFirstHitSurfacePointsWASM } from "./umr-exact-surface-wasm-v1.js?v=20260904-cpu-budget-v1";
 import { trainExactCorrespondenceWASM } from "./umr-exact-correspondence-wasm-v1.js?v=20260905-studio-epoch60-memory-shadow-v2";
 import { bindRobotSlotsToMesh } from "./umr-exact-robot-binding-v1.js?v=20260904-epoch100-v1";
-import { buildCurrentRunComputePack } from "./umr-exact-current-run-pack-v1.js?v=20260904-stop-v1";
-import { retargetMotionBrowserExact } from "./browser-umr-solver-exact-v1.js?v=20260905-fourier-hoi-memory-v1";
+import { buildCurrentRunComputePack } from "./umr-exact-current-run-pack-v1.js?v=20260926-hiphi-shared-beta0-v1";
+import { retargetMotionBrowserExact } from "./browser-umr-solver-exact-v1.js?v=20260926-hiphi-stage4-progress-v3";
 
-const nextPaint = () => new Promise((resolve) => requestAnimationFrame(resolve));
+const nextPaint = () => new Promise((resolve) => {
+  requestAnimationFrame(() => setTimeout(resolve, 0));
+});
 const makeAbortError = () => {
   const error = new Error("Retargeting stopped.");
   error.name = "AbortError";
@@ -168,8 +170,15 @@ export class BrowserUMRRuntimeExact {
       visualGeomPolicy: "auto"
     });
     const robotHeight = meshHeight(mesh.vertices);
-    const sourceHeight = Number(
-      sourcePack.manifest.normalization_scale ?? sourcePack.manifest.source_height
+    const trainingSourceHeight = Number(
+      sourcePack.manifest.training_normalization_scale ??
+      sourcePack.manifest.normalization_scale ??
+      sourcePack.manifest.source_height
+    );
+    const retargetSourceHeight = Number(
+      sourcePack.manifest.retarget_normalization_scale ??
+      sourcePack.manifest.normalization_scale ??
+      sourcePack.manifest.source_height
     );
     onProgress("sampling", 20, "Sampling 4,096 exterior robot-surface points with the native first-hit contract…");
     const samples = await sampleFirstHitSurfacePointsWASM({
@@ -196,7 +205,7 @@ export class BrowserUMRRuntimeExact {
     );
     const initialArtifacts = stageArtifacts(
       sourcePack.manifest, initialPartIds, source.points, samples.points,
-      sourceHeight, robotHeight, toSmplFrame, toSmplFrame
+      trainingSourceHeight, robotHeight, toSmplFrame, toSmplFrame
     );
     onSampling(initialArtifacts.sampling);
     onProgress("sampling", 100, `4,096 exact surface samples ready · robot height ${robotHeight.toFixed(3)} m`);
@@ -215,7 +224,7 @@ export class BrowserUMRRuntimeExact {
       robotVertices: mesh.vertices,
       templateEdgeIndex: source.templateEdgeIndex,
       templateSortIndex: source.templateSortIndex,
-      sourceNormalizationHeight: sourceHeight,
+      sourceNormalizationHeight: trainingSourceHeight,
       robotNormalizationHeight: robotHeight,
       threadCount: trainingThreads,
       signal,
@@ -249,7 +258,7 @@ export class BrowserUMRRuntimeExact {
       // Visualize the correspondence symmetrically: both source and robot
       // slots are the closest points from this run projected onto their meshes.
       pack.manifest, pack.assets.source_part_ids.values,
-      pack.sourceBinding.closestPoints, binding.rootPoints, sourceHeight, robotHeight,
+      pack.sourceBinding.closestPoints, binding.rootPoints, retargetSourceHeight, robotHeight,
       toSmplFrame, false
     );
     onClassification(finalArtifacts.classification);
@@ -257,16 +266,18 @@ export class BrowserUMRRuntimeExact {
     await nextPaint();
     throwIfAborted(signal);
 
-    onProgress("retargeting", 0, "Starting exact MuJoCo Jacobian + Clarabel CPU retargeting…");
+    onProgress("retargeting", 1, "Preparing the exact MuJoCo Jacobian + Clarabel CPU retargeter…");
+    await nextPaint();
+    throwIfAborted(signal);
     const qpos = await retargetMotionBrowserExact(
       this.viewer,
       pack,
       binding,
       robotHeight,
-      (fraction, frame, total) => onProgress(
+      (fraction, frame, total, detail = "") => onProgress(
         "retargeting",
-        fraction * 98,
-        `Exact browser retargeting · frame ${frame} / ${total}`
+        Math.min(99, 1 + 98 * Math.max(0, Math.min(1, Number(fraction) || 0))),
+        detail || ("Exact browser retargeting · frame " + frame + " / " + total)
       ),
       signal
     );

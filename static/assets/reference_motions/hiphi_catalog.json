@@ -1,0 +1,30 @@
+{
+  "library": {
+    "id": "hiphi",
+    "name": "HiPHI",
+    "organization": "Noitom Robotics",
+    "project_url": "https://noitom-robotics.github.io/hiphi",
+    "dataset_url": "https://huggingface.co/datasets/noitomrobotics/HiPHI",
+    "viewer_url": "https://hiphi-viewer.modalitynet.com"
+  },
+  "motions": [
+    {
+      "id": "hiphi_getting_up_0004",
+      "label": "Getting Up",
+      "source_label": "Noitom Robotics · HiPHI",
+      "display_name": "HiPHI — Getting Up"
+    },
+    {
+      "id": "hiphi_pitch_0017",
+      "label": "Pitch",
+      "source_label": "Noitom Robotics · HiPHI",
+      "display_name": "HiPHI — Pitch"
+    },
+    {
+      "id": "hiphi_sit_0019",
+      "label": "Sit",
+      "source_label": "Noitom Robotics · HiPHI",
+      "display_name": "HiPHI — Sit"
+    }
+  ]
+}

@@ -2022,6 +2022,10 @@ body {
   box-shadow: 0 0 0 3px rgba(61, 83, 102, .1);
 }
 
+.mj-pipeline-stages article[data-stage="retargeting"].is-active .mj-stage-progress [data-stage-progress] {
+  transition: none;
+}
+
 .mj-pipeline-stages article.is-active .mj-stage-progress::after {
   position: absolute;
   top: 0;
@@ -2915,4 +2919,156 @@ html {
 /* Extra separation between the main page sections from the Studio onward. */
 .content h3.umr-section-heading {
   margin-top: 5rem;
+}
+
+/* Independent UMR / HiPHI reference libraries. */
+.mj-reference-library-switcher {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 2px 7px;
+  padding: 4px;
+  border: 1px solid #d6dce1;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.mj-reference-library-tab {
+  min-width: 0;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 9px;
+  color: #65717b;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color .16s ease, background .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.mj-reference-library-tab:hover,
+.mj-reference-library-tab:focus-visible {
+  color: #222a31;
+  outline: none;
+  background: #fff;
+}
+
+.mj-reference-library-tab.is-active {
+  color: #fff;
+  background: #344754;
+  box-shadow: 0 4px 12px rgba(26, 37, 45, .18);
+}
+
+.mj-reference-library-tab-hiphi.is-active {
+  background: linear-gradient(135deg, #b044f4, #f06ba8);
+  box-shadow: 0 5px 14px rgba(176, 68, 244, .24);
+}
+
+.mj-reference-library-tab:disabled {
+  cursor: default;
+  opacity: .58;
+}
+
+.mj-reference-library-tab img,
+.mj-reference-library-mark {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+}
+
+.mj-reference-library-mark {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #202b34;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.mj-reference-library-context {
+  flex: 0 0 auto;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0 4px 7px;
+  color: #7a858e;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: .025em;
+}
+
+.mj-reference-library-context[hidden] {
+  display: none;
+}
+
+.mj-reference-library-context-hiphi {
+  color: #7e4b78;
+}
+
+.mj-reference-library-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mj-reference-library-links a {
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(176, 68, 244, .18);
+  border-radius: 50%;
+  color: #8b2d87;
+  background: rgba(255, 255, 255, .82);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.mj-reference-library-links a:hover,
+.mj-reference-library-links a:focus-visible {
+  color: #fff;
+  outline: none;
+  background: linear-gradient(135deg, #b044f4, #f06ba8);
+}
+
+.mj-motion-card[hidden] {
+  display: none;
+}
+
+.mj-motion-sidebar[data-reference-library="hiphi"] {
+  border-color: rgba(176, 68, 244, .2);
+  background:
+    radial-gradient(circle at 5% 0, rgba(176, 68, 244, .11), transparent 150px),
+    radial-gradient(circle at 95% 6%, rgba(255, 154, 200, .15), transparent 180px),
+    linear-gradient(180deg, #fffafd 0%, #fff4fb 100%);
+}
+
+.mj-motion-sidebar[data-reference-library="hiphi"] .mj-motion-card {
+  border-color: rgba(154, 75, 139, .2);
+  box-shadow: 0 6px 18px rgba(104, 44, 98, .07);
+}
+
+.mj-motion-sidebar[data-reference-library="hiphi"] .mj-motion-card:hover,
+.mj-motion-sidebar[data-reference-library="hiphi"] .mj-motion-card:focus-visible {
+  border-color: rgba(176, 68, 244, .55);
+  box-shadow: 0 8px 22px rgba(104, 44, 98, .13);
+}
+
+.mj-motion-sidebar[data-reference-library="hiphi"] .mj-motion-card.is-active {
+  border-color: #b044f4;
+  box-shadow: 0 0 0 1px #b044f4, 0 8px 22px rgba(176, 68, 244, .16);
+}
+
+.mj-motion-sidebar[data-reference-library="hiphi"] .mj-motion-card.is-active .mj-motion-card-title {
+  color: #782b79;
 }

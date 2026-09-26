@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144" role="img" aria-label="HiPHI">
+  <defs>
+    <linearGradient id="hiphi-gradient" x1="0.298" y1="0.506" x2="1.005" y2="0.528">
+      <stop offset="0" stop-color="#cf2585"/>
+      <stop offset="0.549" stop-color="#8b2d87"/>
+      <stop offset="1" stop-color="#772f88"/>
+    </linearGradient>
+    <clipPath id="hiphi-clip"><rect width="144" height="144" rx="26.184"/></clipPath>
+  </defs>
+  <g clip-path="url(#hiphi-clip)">
+    <rect width="204" height="204" transform="translate(-72 76) rotate(-46.521)" fill="url(#hiphi-gradient)"/>
+  </g>
+  <g fill="#fff">
+    <path d="M30 37h14v27h31V37h14v70H75V78H44v29H30Z"/>
+    <circle cx="105" cy="45" r="8"/>
+    <rect x="98" y="59" width="14" height="48" rx="4"/>
+  </g>
+</svg>

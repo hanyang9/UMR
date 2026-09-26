@@ -1,5 +1,5 @@
 const ROOT = new URL("../assets/browser_runtime/source/", import.meta.url);
-const SOURCE_REVISION = "20260905-omnicontact-642-viewer-140-480-ground-hard-v2";
+const SOURCE_REVISION = "20260926-hiphi-shared-beta0-v1";
 const TYPES = {
   float32: Float32Array,
   int32: Int32Array,
