@@ -48,7 +48,7 @@
       "dtype": "float32",
       "encoding": "gzip",
       "path": "source_points_ratio_0_5.float32.gz",
-      "sha256": "3c90bfad7c84e8cd9559fa14326706b7a18a39f61b096d3e2532f2e7beadc60d",
+      "sha256": "ea2bb074aec256e947965f3316fbe72aa75a55c0abe0bae4ae2e0185520ead03",
       "shape": [
         4096,
         3
@@ -92,7 +92,7 @@
       "dtype": "uint32",
       "encoding": "gzip",
       "path": "source_sample_face_ids.uint32.gz",
-      "sha256": "ec7d8c3797e8cb5bba365eb7477b66a4954f4f4c8e8b59761b7433381f11e8d1",
+      "sha256": "6fce950fc7401202aedececcfd5b48d7c32c9c3e2c27fdb9d27e41f55f3a2b95",
       "shape": [
         4096
       ]
@@ -102,7 +102,7 @@
       "dtype": "uint16",
       "encoding": "gzip",
       "path": "template_edge_index.uint16.gz",
-      "sha256": "1860475fb0b527b9fb372efa7eaff4bc974dcf18e54340f7ae4a0521dc3ea859",
+      "sha256": "6590e4d20fe2ce9d022e08ff2b69c33f66ef207cbe55b4fc22ae3468fe5eeba7",
       "shape": [
         131072,
         2
@@ -113,7 +113,7 @@
       "dtype": "uint16",
       "encoding": "gzip",
       "path": "template_sort_index.uint16.gz",
-      "sha256": "2aedb463a5ed6fe9b82158712a8181c9e86997b0901d86123bb7d005c1fc382b",
+      "sha256": "d6ffd4db4c73ea507009f973f2de74748059ce4c56658b83193d3c063b9ac29b",
       "shape": [
         4096
       ]
@@ -123,22 +123,16 @@
       "dtype": "float32",
       "encoding": "gzip",
       "path": "source_vertices_ratio_0_5.float32.gz",
-      "sha256": "7069ef3a7fe087ced88bf77b0de83e5ef3bddb54a7ee9e99c94efaa7402fbccd",
+      "sha256": "c753dcbbac1ec8b29fe26a9f54bad35c6fbe2c4de2e804863eeadb52cdf3623b",
       "shape": [
         10475,
         3
       ]
     }
   },
-  "bbox_height": 1.7210897207260132,
+  "bbox_height": 1.6618016958236694,
   "center_axis": 1,
-  "correspondence_transfer": {
-    "mode": "shared_smplx_fixed_face_bary",
-    "motion_template": "smplx_neutral_betas_52fa48a138",
-    "topology_contract": "identical_faces",
-    "training_template": "smplx_neutral_betas_b80de5d138"
-  },
-  "display_name": "HiPHI \u2014 Getting Up",
+  "display_name": "HiPHI — Getting Up",
   "edge_graph": "geodesic",
   "edge_k": 32,
   "format": "umr-exact-browser-reference-pack-v2",
@@ -147,13 +141,11 @@
   "interaction_objects": [],
   "mat_height_m": 0.0,
   "motion_id": "hiphi_getting_up_0004",
-  "motion_template_name": "smplx_neutral_betas_52fa48a138",
   "normalization_scale": 1.6618016958236694,
   "num_points": 4096,
   "num_slots": 4096,
   "object_reference": null,
   "pipeline": "hsi_hoi",
-  "retarget_normalization_scale": 1.6618016958236694,
   "retarget_template_bbox_height": 1.6618016958236694,
   "sampling": {
     "candidate_multiplier": 12,
@@ -375,16 +367,15 @@
   "source_ground_align": "none",
   "source_height": 1.6618016958236694,
   "source_model_type": "smplx",
-  "source_name": "smplx_neutral_betas_b80de5d138",
+  "source_name": "smplx_neutral_betas_52fa48a138",
   "source_to_smpl_frame": true,
   "stored_center_ratio": 0.5,
   "template_sort": "y_z_x",
   "training": {
     "edge_weight": 0.4,
-    "epochs": 100,
+    "epochs": 60,
     "learning_rate": 0.001,
-    "min_learning_rate": 1e-05,
+    "min_learning_rate": 0.00001,
     "repulsion_weight": 0.002
-  },
-  "training_normalization_scale": 1.7210897207260132
+  }
 }

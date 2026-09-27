@@ -48,7 +48,7 @@
       "dtype": "float32",
       "encoding": "gzip",
       "path": "source_points_ratio_0_5.float32.gz",
-      "sha256": "3c90bfad7c84e8cd9559fa14326706b7a18a39f61b096d3e2532f2e7beadc60d",
+      "sha256": "32b9fed0a258679b2637dc9719f1b60011a1b2e5e15148b3f6ac72e407bc4f30",
       "shape": [
         4096,
         3
@@ -125,7 +125,7 @@
       "dtype": "uint32",
       "encoding": "gzip",
       "path": "source_sample_face_ids.uint32.gz",
-      "sha256": "ec7d8c3797e8cb5bba365eb7477b66a4954f4f4c8e8b59761b7433381f11e8d1",
+      "sha256": "cd7252bde95739697c5adacbed70956359f00c029c3f6dcaf24c154d68378a2b",
       "shape": [
         4096
       ]
@@ -135,7 +135,7 @@
       "dtype": "uint16",
       "encoding": "gzip",
       "path": "template_edge_index.uint16.gz",
-      "sha256": "1860475fb0b527b9fb372efa7eaff4bc974dcf18e54340f7ae4a0521dc3ea859",
+      "sha256": "02782117c88202756320bec92046d0711fcf2f15faaff607b7a94bf4acd777a5",
       "shape": [
         131072,
         2
@@ -146,7 +146,7 @@
       "dtype": "uint16",
       "encoding": "gzip",
       "path": "template_sort_index.uint16.gz",
-      "sha256": "2aedb463a5ed6fe9b82158712a8181c9e86997b0901d86123bb7d005c1fc382b",
+      "sha256": "0c6a170ba4d1fbe97d9cd07ccbe4005b094039a45ea58522ff9a4c3d351b1e08",
       "shape": [
         4096
       ]
@@ -156,22 +156,16 @@
       "dtype": "float32",
       "encoding": "gzip",
       "path": "source_vertices_ratio_0_5.float32.gz",
-      "sha256": "7069ef3a7fe087ced88bf77b0de83e5ef3bddb54a7ee9e99c94efaa7402fbccd",
+      "sha256": "cd51bab34e2cf40cb256f29f016be21f0b13c3a798080e050809fa46268a281e",
       "shape": [
         10475,
         3
       ]
     }
   },
-  "bbox_height": 1.7210897207260132,
+  "bbox_height": 1.7223745584487915,
   "center_axis": 1,
-  "correspondence_transfer": {
-    "mode": "shared_smplx_fixed_face_bary",
-    "motion_template": "smplx_neutral_betas_f710f5d1a4",
-    "topology_contract": "identical_faces",
-    "training_template": "smplx_neutral_betas_b80de5d138"
-  },
-  "display_name": "HiPHI \u2014 Pitch",
+  "display_name": "HiPHI — Pitch",
   "edge_graph": "geodesic",
   "edge_k": 32,
   "format": "umr-exact-browser-reference-pack-v2",
@@ -7444,7 +7438,7 @@
           -0.07418332248926163
         ],
         [
-          3.927717261831276e-05,
+          0.00003927717261831276,
           0.005880248732864857,
           -0.07418332248926163
         ],
@@ -7504,7 +7498,7 @@
           -0.07418332248926163
         ],
         [
-          3.927717261831276e-05,
+          0.00003927717261831276,
           -0.014747211709618568,
           -0.07418332248926163
         ],
@@ -9334,7 +9328,7 @@
           0.0627555176615715
         ],
         [
-          3.927717261831276e-05,
+          0.00003927717261831276,
           0.005880248732864857,
           0.0627555176615715
         ],
@@ -9394,7 +9388,7 @@
           0.0627555176615715
         ],
         [
-          3.927717261831276e-05,
+          0.00003927717261831276,
           -0.014747211709618568,
           0.0627555176615715
         ],
@@ -9623,7 +9617,6 @@
   ],
   "mat_height_m": 0.0,
   "motion_id": "hiphi_pitch_0017",
-  "motion_template_name": "smplx_neutral_betas_f710f5d1a4",
   "normalization_scale": 1.7223745584487915,
   "num_points": 4096,
   "num_slots": 4096,
@@ -9632,7 +9625,6 @@
     "source_height": 1.7223745584487915
   },
   "pipeline": "hsi_hoi",
-  "retarget_normalization_scale": 1.7223745584487915,
   "retarget_template_bbox_height": 1.7223745584487915,
   "sampling": {
     "candidate_multiplier": 12,
@@ -9854,16 +9846,15 @@
   "source_ground_align": "none",
   "source_height": 1.7223745584487915,
   "source_model_type": "smplx",
-  "source_name": "smplx_neutral_betas_b80de5d138",
+  "source_name": "smplx_neutral_betas_f710f5d1a4",
   "source_to_smpl_frame": true,
   "stored_center_ratio": 0.5,
   "template_sort": "y_z_x",
   "training": {
     "edge_weight": 0.4,
-    "epochs": 100,
+    "epochs": 60,
     "learning_rate": 0.001,
-    "min_learning_rate": 1e-05,
+    "min_learning_rate": 0.00001,
     "repulsion_weight": 0.002
-  },
-  "training_normalization_scale": 1.7210897207260132
+  }
 }

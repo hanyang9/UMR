@@ -8,8 +8,9 @@ import {
 } from "./umr-clarabel-qp-v1.js";
 import {
   buildRobotObjectCollisionCache,
+  computeRobotSelfPenetrationRows,
   computeRobotObjectPenetrationRows
-} from "./umr-exact-robot-object-collision-v1.js?v=20260905-fourier-hoi-memory-v1";
+} from "./umr-exact-robot-object-collision-v1.js?v=20260927-robot-self-penetration-v1";
 
 const clamp = (value, lower, upper) => Math.min(upper, Math.max(lower, value));
 const nextPaint = () => new Promise((resolve) => {
@@ -538,6 +539,36 @@ async function solveFrame({
       }
     }
 
+    let selfPenetration = { jacobians: [], distances: [] };
+    const selfSoftCost = Number(solver.robot_self_penetration_cost);
+    const selfHard = Boolean(solver.robot_self_penetration_hard_constraint);
+    if (selfSoftCost > 0 || selfHard) {
+      if (!collisionCache) {
+        throw new Error("Exact browser self-penetration requires a robot collision model.");
+      }
+      const selfActivation = Math.max(
+        Number(solver.collision_threshold ?? 0.1),
+        selfSoftCost > 0 ? Number(solver.robot_self_penetration_tolerance || 0) : 0,
+        selfHard ? Number(solver.robot_self_penetration_margin || 0) : 0
+      );
+      selfPenetration = computeRobotSelfPenetrationRows(
+        collisionCache,
+        qpos,
+        Number(solver.robot_self_penetration_margin || 0),
+        selfActivation,
+        Number(solver.robot_self_penetration_max_pairs || 0)
+      );
+      if (selfSoftCost > 0) {
+        const tolerance = Number(solver.robot_self_penetration_tolerance || 0);
+        const scale = Math.sqrt(selfSoftCost);
+        for (let index = 0; index < selfPenetration.jacobians.length; index += 1) {
+          const distance = Number(selfPenetration.distances[index]);
+          if (tolerance - distance <= 0) continue;
+          rows.push(selfPenetration.jacobians[index], distance - tolerance, scale);
+        }
+      }
+    }
+
     let objectPenetration = { jacobians: [], distances: [] };
     if (objectFrame && collisionCache &&
         (solver.robot_object_hard_constraint || Number(solver.robot_object_penetration_soft_cost) > 0)) {
@@ -622,8 +653,19 @@ async function solveFrame({
     } else if (solver.ground_penetration_hard_constraint) {
       throw new Error(`Exact browser solver does not yet support ground mode ${groundMode}.`);
     }
-    if (solver.robot_self_penetration_hard_constraint || Number(solver.robot_self_penetration_cost) > 0) {
-      throw new Error("Exact browser self-penetration collision rows are not initialized.");
+    if (selfHard) {
+      const slackCost = solver.robot_self_penetration_hard_slack
+        ? Number(solver.robot_self_penetration_hard_slack_cost)
+        : 0;
+      const margin = Number(solver.robot_self_penetration_margin || 0);
+      for (let index = 0; index < selfPenetration.jacobians.length; index += 1) {
+        const source = selfPenetration.jacobians[index];
+        const row = new Float64Array(Number(model.nv));
+        for (let dof = 0; dof < row.length; dof += 1) row[dof] = -source[dof];
+        inequalityRows.push(row);
+        inequalityBounds.push(Number(selfPenetration.distances[index]) - margin);
+        inequalitySoftCosts.push(slackCost);
+      }
     }
     if (solver.robot_object_hard_constraint && objectFrame && collisionCache) {
       const slackCost = solver.robot_object_hard_slack ? Number(solver.robot_object_hard_slack_cost) : 0;

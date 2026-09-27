@@ -208,7 +208,10 @@ function buildCollisionDocument(viewer, sourceGeomIds) {
 
 export async function buildRobotObjectCollisionCache(viewer, pack, targetHeight) {
   const solver = pack.manifest.solver || {};
-  const enabled = Boolean(solver.robot_object_hard_constraint) || Number(solver.robot_object_penetration_soft_cost) > 0;
+  const enabled = Boolean(solver.robot_object_hard_constraint) ||
+    Number(solver.robot_object_penetration_soft_cost) > 0 ||
+    Boolean(solver.robot_self_penetration_hard_constraint) ||
+    Number(solver.robot_self_penetration_cost) > 0;
   if (!enabled) return null;
   const { module, model: mainModel } = viewer;
   if (!module || !mainModel) throw new Error("The selected robot model is unavailable for exact HOI collision constraints.");
@@ -301,6 +304,80 @@ export async function buildRobotObjectCollisionCache(viewer, pack, targetHeight)
       collisionData.delete();
       collisionModel.delete();
     }
+  };
+}
+
+export function computeRobotSelfPenetrationRows(cache, qpos, margin, threshold, maxPairs = 0) {
+  if (!cache) return { jacobians: [], distances: [], pairs: [] };
+  const { module, model, data } = cache;
+  module.mj_resetData(model, data);
+  data.qpos.subarray(0, cache.robotNq).set(qpos.subarray(0, cache.robotNq));
+  module.mj_forward(model, data);
+  const activation = Math.max(Number(threshold), Number(margin), 0);
+  const savedContype = Int32Array.from(model.geom_contype);
+  const savedConaffinity = Int32Array.from(model.geom_conaffinity);
+  const savedMargin = Float64Array.from(model.geom_margin);
+  const robotSet = new Set(cache.robotGeomIds);
+  const candidates = new Map();
+  try {
+    // Exclude the appended interaction object from this pass. Robot collision
+    // masks remain unchanged, matching the native self-penetration cache.
+    for (const geomId of cache.objectGeomIds) {
+      model.geom_contype[geomId] = 0;
+      model.geom_conaffinity[geomId] = 0;
+    }
+    for (const geomId of cache.robotGeomIds) {
+      model.geom_margin[geomId] = Math.max(Number(savedMargin[geomId]), activation);
+    }
+    module.mj_collision(model, data);
+    const contacts = data.contact;
+    try {
+      const count = Math.min(Number(data.ncon), Number(contacts.size()));
+      for (let contactId = 0; contactId < count; contactId += 1) {
+        const contact = contacts.get(contactId);
+        const raw1 = Number(contact.geom1);
+        const raw2 = Number(contact.geom2);
+        if (!robotSet.has(raw1) || !robotSet.has(raw2)) continue;
+        const geom1 = Math.min(raw1, raw2);
+        const geom2 = Math.max(raw1, raw2);
+        candidates.set(`${geom1}:${geom2}`, [geom1, geom2]);
+      }
+    } finally {
+      contacts.delete?.();
+    }
+  } finally {
+    model.geom_contype.set(savedContype);
+    model.geom_conaffinity.set(savedConaffinity);
+    model.geom_margin.set(savedMargin);
+  }
+
+  const found = [];
+  const ordered = [...candidates.values()].sort((left, right) => left[0] - right[0] || left[1] - right[1]);
+  for (const [geom1, geom2] of ordered) {
+    const fromto = cache.fromtoBuffer.GetView();
+    fromto.fill(0);
+    let distance;
+    try {
+      distance = Number(module.mj_geomDistance(model, data, geom1, geom2, activation, fromto));
+    } catch {
+      continue;
+    }
+    if (distance > activation) continue;
+    found.push({
+      jacobian: relativeJacobian(cache, geom1, geom2, fromto, distance),
+      distance,
+      geom1,
+      geom2
+    });
+  }
+  if (Number(maxPairs) > 0 && found.length > Number(maxPairs)) {
+    found.sort((left, right) => left.distance - right.distance);
+    found.length = Number(maxPairs);
+  }
+  return {
+    jacobians: found.map((item) => item.jacobian),
+    distances: found.map((item) => item.distance),
+    pairs: found.map((item) => [item.geom1, item.geom2])
   };
 }
 

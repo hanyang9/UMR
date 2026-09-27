@@ -45,6 +45,36 @@ const throwIfAborted = (signal) => {
   if (signal?.aborted) throw makeAbortError();
 };
 
+// Preset-specific arm surface profiles selected through offline Sit-motion
+// ablations. They change surface weights only and keep native MJCF ranges.
+const PRESET_ARM_SURFACE_PROFILES = {
+  piplus: {
+    leftUpperArm: { point: 10, normal: 1 },
+    rightUpperArm: { point: 10, normal: 1 },
+    leftArm: { point: 10, normal: 1 },
+    rightArm: { point: 10, normal: 1 },
+    leftForeArm: { point: 10, normal: 1 },
+    rightForeArm: { point: 10, normal: 1 },
+    leftHand: { point: 10, normal: 1 },
+    rightHand: { point: 10, normal: 1 }
+  },
+  booster_k1: {
+    leftUpperArm: { point: 10, normal: 1 },
+    rightUpperArm: { point: 10, normal: 1 },
+    leftArm: { point: 10, normal: 1 },
+    rightArm: { point: 10, normal: 1 },
+    leftForeArm: { point: 10, normal: 1 },
+    rightForeArm: { point: 10, normal: 1 },
+    leftHand: { point: 10, normal: 0 },
+    rightHand: { point: 10, normal: 0 }
+  }
+};
+
+const PRESET_HIPHI_SIT_SELF_CONTACT_COST = Object.freeze({
+  piplus: 500,
+  booster_k1: 500
+});
+
 function normalized3(x, y, z) {
   const scale = 1 / Math.max(Math.hypot(x, y, z), 1e-12);
   return [x * scale, y * scale, z * scale];
@@ -220,7 +250,7 @@ function relabelUpperArms(partIds, closestPoints, segments) {
   }
 }
 
-function classifyAndSelect(sourcePack, sourceBinding) {
+function classifyAndSelect(sourcePack, sourceBinding, robotPresetId = "") {
   const { manifest, assets } = sourcePack;
   const slotCount = Number(manifest.num_slots);
   const facePartIds = assets.face_part_ids.values;
@@ -253,6 +283,19 @@ function classifyAndSelect(sourcePack, sourceBinding) {
       const choices = choiceWithoutReplacement(candidates.length, requested, rng);
       const picked = Array.from(choices, (index) => candidates[Number(index)]).sort((a, b) => a - b);
       selected.push(...picked);
+    }
+  }
+  const surfaceProfile = PRESET_ARM_SURFACE_PROFILES[String(robotPresetId || "")];
+  if (surfaceProfile) {
+    const nameToId = new Map((manifest.segments || []).map((segment) => [String(segment.name), Number(segment.id)]));
+    for (const [segmentName, weights] of Object.entries(surfaceProfile)) {
+      const partId = nameToId.get(segmentName);
+      if (!(partId > 0)) continue;
+      for (let slot = 0; slot < slotCount; slot += 1) {
+        if (Number(partIds[slot]) !== partId) continue;
+        if (Number.isFinite(weights.point)) pointCosts[slot] = Number(weights.point);
+        if (Number.isFinite(weights.normal)) normalCosts[slot] = Number(weights.normal);
+      }
     }
   }
   selected.sort((a, b) => a - b);
@@ -513,6 +556,7 @@ export async function buildCurrentRunComputePack({
   trainedSourceSlots,
   robotBinding,
   robotHeight,
+  robotPresetId = "",
   signal = null,
   onProgress = () => {}
 }) {
@@ -530,7 +574,7 @@ export async function buildCurrentRunComputePack({
     sourcePack, source, trainedSourceSlots, robotBinding.trainingNormals, onProgress, signal
   );
   throwIfAborted(signal);
-  const classified = classifyAndSelect(sourcePack, dynamic.binding);
+  const classified = classifyAndSelect(sourcePack, dynamic.binding, robotPresetId);
   onProgress(0.58, "Classifying current source slots with native face segments…");
   const rootGround = applyReferenceGround(
     manifest,
@@ -538,6 +582,16 @@ export async function buildCurrentRunComputePack({
     sourcePack.assets.root_positions_unit.values
   );
   const solver = { ...manifest.solver };
+  if (String(manifest.motion_id || "") === "hiphi_sit_0019") {
+    const presetSelfContactCost = PRESET_HIPHI_SIT_SELF_CONTACT_COST[String(robotPresetId || "")];
+    if (Number.isFinite(presetSelfContactCost)) {
+      solver.self_contact_map_cost = Number(presetSelfContactCost);
+      solver.robot_self_penetration_hard_constraint = true;
+      solver.robot_self_penetration_hard_slack = true;
+      solver.robot_self_penetration_hard_slack_cost = 1000;
+      solver.trajectory_filter_mode = "lqr";
+    }
+  }
   solver.ground_contact_threshold = Number(solver.ground_contact_threshold_m) / robotHeight;
   solver.ground_contact_snap_threshold = Number(solver.ground_contact_snap_threshold_m) / robotHeight;
   solver.self_contact_threshold = Number(solver.self_contact_threshold_m) / robotHeight;
@@ -555,7 +609,7 @@ export async function buildCurrentRunComputePack({
     dynamic.sourcePoints,
     classified.selected,
     classified.partIds,
-    manifest,
+    { ...manifest, solver },
     solver.self_contact_threshold,
     signal
   );

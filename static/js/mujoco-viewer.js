@@ -3,7 +3,7 @@ import { OrbitControls } from "../vendor/three/OrbitControls.js";
 import { RoomEnvironment } from "../vendor/three/addons/environments/RoomEnvironment.js";
 import loadMujoco from "../vendor/mujoco/mujoco.js";
 import { ReferenceMotionLibrary } from "./reference-motion-scene.js?v=20260921-hiphi-library-v1";
-import { BrowserUMRRuntimeExact } from "./browser-umr-runtime-exact-v1.js?v=20260926-hiphi-shared-beta0-v1";
+import { BrowserUMRRuntimeExact } from "./browser-umr-runtime-exact-v1.js?v=20260927-hiphi-sit-lqr-v1";
 import { prepareFloatingRobotXml } from "./umr-mjcf-floating-root-v1.js";
 
 const DEMO_MJCF = `

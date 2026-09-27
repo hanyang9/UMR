@@ -1,12 +1,12 @@
 // Exact, CPU-only UMR pipeline orchestration for static browser deployment.
 
-import { loadExactSourcePack, sourceForCenterRatio } from "./umr-exact-source-pack-v1.js?v=20260926-hiphi-shared-beta0-v1";
+import { loadExactSourcePack, sourceForCenterRatio } from "./umr-exact-source-pack-v1.js?v=20260927-hiphi-sit-lqr-v1";
 import { collectRobotVisualMesh } from "./umr-exact-robot-mesh-v1.js";
 import { sampleFirstHitSurfacePointsWASM } from "./umr-exact-surface-wasm-v1.js?v=20260904-cpu-budget-v1";
 import { trainExactCorrespondenceWASM } from "./umr-exact-correspondence-wasm-v1.js?v=20260905-studio-epoch60-memory-shadow-v2";
 import { bindRobotSlotsToMesh } from "./umr-exact-robot-binding-v1.js?v=20260904-epoch100-v1";
-import { buildCurrentRunComputePack } from "./umr-exact-current-run-pack-v1.js?v=20260926-hiphi-shared-beta0-v1";
-import { retargetMotionBrowserExact } from "./browser-umr-solver-exact-v1.js?v=20260926-hiphi-stage4-progress-v3";
+import { buildCurrentRunComputePack } from "./umr-exact-current-run-pack-v1.js?v=20260927-hiphi-sit-lqr-v1";
+import { retargetMotionBrowserExact } from "./browser-umr-solver-exact-v1.js?v=20260927-robot-self-penetration-v1";
 
 const nextPaint = () => new Promise((resolve) => {
   requestAnimationFrame(() => setTimeout(resolve, 0));
@@ -250,6 +250,7 @@ export class BrowserUMRRuntimeExact {
       trainedSourceSlots: trained.sourceSlots,
       robotBinding: binding,
       robotHeight,
+      robotPresetId: this.viewer.activeRobotPresetId || "",
       signal,
       onProgress: (fraction, message) => onProgress("training", 97 + 3 * fraction, message)
     });

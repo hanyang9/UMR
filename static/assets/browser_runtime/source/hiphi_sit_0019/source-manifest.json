@@ -48,7 +48,7 @@
       "dtype": "float32",
       "encoding": "gzip",
       "path": "source_points_ratio_0_5.float32.gz",
-      "sha256": "3c90bfad7c84e8cd9559fa14326706b7a18a39f61b096d3e2532f2e7beadc60d",
+      "sha256": "7f1778fe1887b7d401d37cc5514652059c4c0c20c8396418b84b667a22477a36",
       "shape": [
         4096,
         3
@@ -125,7 +125,7 @@
       "dtype": "uint32",
       "encoding": "gzip",
       "path": "source_sample_face_ids.uint32.gz",
-      "sha256": "ec7d8c3797e8cb5bba365eb7477b66a4954f4f4c8e8b59761b7433381f11e8d1",
+      "sha256": "bd0ad2d97d7515a46f44845f0bf8f029c365b346fb6fd8d277f080aa70f46315",
       "shape": [
         4096
       ]
@@ -135,7 +135,7 @@
       "dtype": "uint16",
       "encoding": "gzip",
       "path": "template_edge_index.uint16.gz",
-      "sha256": "1860475fb0b527b9fb372efa7eaff4bc974dcf18e54340f7ae4a0521dc3ea859",
+      "sha256": "7f008dfb366d1131512ba4ae8ecbed52e62049c2a5c166cf6a79fcede875f430",
       "shape": [
         131072,
         2
@@ -146,7 +146,7 @@
       "dtype": "uint16",
       "encoding": "gzip",
       "path": "template_sort_index.uint16.gz",
-      "sha256": "2aedb463a5ed6fe9b82158712a8181c9e86997b0901d86123bb7d005c1fc382b",
+      "sha256": "e478dab1899a3794bda1b0cb001213566a1d0a15a7d981d3838966f4e4834e70",
       "shape": [
         4096
       ]
@@ -156,22 +156,16 @@
       "dtype": "float32",
       "encoding": "gzip",
       "path": "source_vertices_ratio_0_5.float32.gz",
-      "sha256": "7069ef3a7fe087ced88bf77b0de83e5ef3bddb54a7ee9e99c94efaa7402fbccd",
+      "sha256": "939fc5873d4f9207a9e352ee7332d3cf3416b7b6720c86822eb5078a1203ea8b",
       "shape": [
         10475,
         3
       ]
     }
   },
-  "bbox_height": 1.7210897207260132,
+  "bbox_height": 1.6353914737701416,
   "center_axis": 1,
-  "correspondence_transfer": {
-    "mode": "shared_smplx_fixed_face_bary",
-    "motion_template": "smplx_neutral_betas_df4ce32de4",
-    "topology_contract": "identical_faces",
-    "training_template": "smplx_neutral_betas_b80de5d138"
-  },
-  "display_name": "HiPHI \u2014 Sit",
+  "display_name": "HiPHI — Sit",
   "edge_graph": "geodesic",
   "edge_k": 32,
   "format": "umr-exact-browser-reference-pack-v2",
@@ -5304,7 +5298,6 @@
   ],
   "mat_height_m": 0.0,
   "motion_id": "hiphi_sit_0019",
-  "motion_template_name": "smplx_neutral_betas_df4ce32de4",
   "normalization_scale": 1.6353914737701416,
   "num_points": 4096,
   "num_slots": 4096,
@@ -5313,7 +5306,6 @@
     "source_height": 1.6353914737701416
   },
   "pipeline": "hsi_hoi",
-  "retarget_normalization_scale": 1.6353914737701416,
   "retarget_template_bbox_height": 1.6353914737701416,
   "sampling": {
     "candidate_multiplier": 12,
@@ -5535,16 +5527,15 @@
   "source_ground_align": "none",
   "source_height": 1.6353914737701416,
   "source_model_type": "smplx",
-  "source_name": "smplx_neutral_betas_b80de5d138",
+  "source_name": "smplx_neutral_betas_df4ce32de4",
   "source_to_smpl_frame": true,
   "stored_center_ratio": 0.5,
   "template_sort": "y_z_x",
   "training": {
     "edge_weight": 0.4,
-    "epochs": 100,
+    "epochs": 60,
     "learning_rate": 0.001,
-    "min_learning_rate": 1e-05,
+    "min_learning_rate": 0.00001,
     "repulsion_weight": 0.002
-  },
-  "training_normalization_scale": 1.7210897207260132
+  }
 }
